@@ -1,6 +1,6 @@
 # Rahmenbedingungen und Zielarchitektur — BattleBet
 
-**Version:** 1.2
+**Version:** 1.3
 **Stand:** 2026-07-17
 **Status:** lebendes Dokument (wächst mit den Entscheidungen)
 
@@ -28,7 +28,7 @@ müssen:
 - **Währungen** — ein kleiner Samen heute genügt, der Rest kommt später.
 - **Server + App + Admin** — fast reine Zukunft, prägt aber die Architektur am stärksten.
 - **Laufkontrolle (Streckenmesser)** — das technische Kernstück; das Konzept muss vor
-  allem anderen stehen, die Umsetzung folgt gestuft über die Pot-Ligen.
+  allem anderen stehen, die Umsetzung folgt gestuft.
 
 ## 3. Getroffene Grundsatz-Entscheidungen (2026-07-17)
 
@@ -42,13 +42,22 @@ müssen:
 4. **Laufkontrolle/Streckenmesser ist das Kernstück.** GPS-basierte Messung (ob / wie
    weit / wie schnell), zuverlässig **und** fälschungssicher. Grundsatz: absolute
    Manipulationssicherheit ist mit Consumer-Handys nicht erreichbar; Ziel ist, Betrug
-   *unlohnend* zu machen (ein Regler, kein Ja/Nein). Umgesetzt über **Pot-Ligen**
-   (Abschnitt 8): Die Prüftiefe koppelt an den maximal möglichen **Einzel-Gewinn**,
-   nicht an den Einsatz; jeder Pot ist ein bei Erstellung fixierter, typisierter Vertrag.
-5. **iOS zuerst.** Entwicklungs- und Launch-Priorität liegt auf iOS (deutlich schwerer
-   zu täuschen als Android, s. 4.4); Android folgt danach. Das betrifft die *Reihenfolge*
-   des Bauens/Ausrollens — die Plattform-Zulassung je Liga (8.4) bleibt davon unberührt.
-6. Diese Leitplanken werden hier festgehalten und mitgepflegt.
+   *unlohnend* zu machen (ein Regler, kein Ja/Nein). Umgesetzt über ein **Server-Urteil**
+   über signierte Rohdaten und (vorerst) **eine Standard-Prüfstufe** (Abschnitt 8).
+5. **Keine Plattform-Priorität.** Die frühere Festlegung „iOS zuerst" ist nach der
+   Best-Practice-Recherche (s. `Recherche_Streckenmesser_und_Abgleich.md`) **verworfen**:
+   Ein belastbarer Sicherheitsvorsprung von iOS ließ sich nicht belegen. iOS + Android
+   gleichrangig; die Android-spezifische Schwäche (Mock-Location) wird **serverseitig**
+   abgefangen (isMock, Attestierung, Quervalidierung) — nicht durch die Plattformwahl.
+6. **Audit + Beweislast + Verwirkung** (belegte Best Practice, StepBet/HealthyWage): Bei
+   Verdacht (zufällig oder algorithmisch getriggert) muss **der Nutzer** den Lauf
+   nachweisen; unbewiesen = **kein Gewinn**; nachgewiesener Betrug = **Ausschluss +
+   Einsatz verwirkt** (Abschreckung).
+7. **Pot-Ligen vereinfacht.** Heute: **eine solide Standard-Prüfstufe für alle Pots +
+   harte Deckel** als primäre Bremse. Gestufte Prüftiefe bleibt als **Option** offen
+   (die Architektur hält das Feld „Prüfprofil" bereit), wird aber **nur bei Bedarf**
+   eingeführt — bewusste eigene Hypothese ohne dokumentierten Branchen-Präzedenz.
+8. Diese Leitplanken werden hier festgehalten und mitgepflegt.
 
 ---
 
@@ -129,29 +138,49 @@ Admin-Oberfläche, Moderations-Werkzeuge.
 und das **fälschungssicher**, weil am Pot echtes Geld hängt. Das technische Kernstück
 des ganzen Programms.
 
+> **Belegt durch Praxis-Recherche (2026-07-17):** Die folgende Haltung ist gegen reale
+> Geld-Fitness-Apps (StepBet, HealthyWage, Strava) und GNSS-Fachliteratur geprüft; Details
+> und Quellen in `Recherche_Streckenmesser_und_Abgleich.md`.
+
 **Grundhaltung (unbequem, aber ehrlich):** „Manipulationssicher" im absoluten Sinn ist
 mit einem Consumer-Handy **nicht** erreichbar — das Gerät gehört dem potenziellen
-Betrüger. Ziel ist deshalb, **Betrug so aufwändig und entdeckbar zu machen, dass er sich
-gegenüber dem möglichen Gewinn nicht lohnt** — ein Regler, dessen Stellung zur Höhe des
-maximal möglichen Einzel-Gewinns passt (→ Pot-Ligen, Abschnitt 8).
+Betrüger. (Bestätigt ausgerechnet vom Marktführer: Strava gibt offen zu, bestimmte
+Täuschungen prinzipiell nicht zu erkennen.) Ziel ist deshalb, **Betrug so aufwändig und
+entdeckbar zu machen, dass er sich gegenüber dem möglichen Gewinn nicht lohnt** — ein
+Regler, dessen Stellung zur Höhe des maximal möglichen Einzel-Gewinns passt.
 
 Es sind eigentlich **zwei Probleme**:
 
-- **Messen (funktioniert es?):** GPS allein ist zu unscharf (5–10 m, schlechter in
-  Stadt/Wald; Rauschen verlängert Strecken tendenziell). Lösung: **Sensor-Fusion** —
-  GPS/GNSS + Beschleunigung (Schrittrhythmus) + Barometer (Höhe) + Schrittzähler +
+- **Messen (funktioniert es?):** GPS allein ist zu unscharf. **Mess-Realität:** Roh-GPS
+  auf Smartphones ist **metergenau, nicht sub-metergenau** (realistische Fusion ~1,6–4,7 m;
+  Dezimeter nur mit Speziallabor-Verfahren). Konsequenz: **Wett-Regeln mit Toleranzband**
+  denken (z. B. „≥ 7 km" mit Puffer), keine zentimetergenauen Ziele. **Dual-Frequency
+  (L1/L5)**-Geräte sind der beste Consumer-Hebel. Grundmethode: **Sensor-Fusion** —
+  GPS/GNSS + Beschleunigung (Schrittrhythmus) + Barometer + Schrittzähler +
   OS-Fitness-Schnittstellen (Apple HealthKit, Android Health Connect).
 - **Fälschungssicherheit (Anti-Betrug):** **Verteidigung in Schichten** — kein
-  Einzelmittel genügt (Bausteine s. 8.2): Geräte-Attestierung, Sensor-Fusion +
-  Physik-Plausibilität, **Server als einzige Wahrheit** (das Handy schickt rohe,
-  signierte, zeitgestempelte Sensordaten; der Server urteilt — nie „ich bin 7 km
-  gelaufen, glaub mir"), serverseitige Anomalie-Erkennung, optional Puls-Wearable und
-  Liveness/Ident-Checks, dazu wirtschaftliche/Design-Bremsen.
+  Einzelmittel genügt (Bausteine s. 8.2). Kern:
+  1. **Server als einzige Wahrheit** — das Handy schickt rohe, signierte, zeitgestempelte
+     Sensordaten; der Server urteilt (nie „ich bin 7 km gelaufen, glaub mir"). Reine
+     Client-Prüfung ist umgehbar (Standort lässt sich auf API-Ebene fälschen).
+  2. **Vertrauensanker echter Tracker** — Anbindung an Apple Health / Health Connect /
+     Fitbit / Garmin statt manueller Eingabe; dabei **Herkunfts-/Quell-App-Attribution**
+     (keine manuell eingetragenen Workouts akzeptieren, denn in HealthKit/Health Connect
+     lassen sich gefälschte Workouts schreiben).
+  3. **Sensor-Fusion + Physik-Plausibilität** (GPS-Tempo × Kadenz; Höchstgeschwindigkeit,
+     Teleport-/Sprung-Erkennung).
+  4. **Geräte-Attestierung** (Apple App Attest / Google Play Integrity) — eine **Hürde,
+     kein Wall**: hebt den Aufwand deutlich, ist aber selbst umgehbar; nicht über-vertrauen.
+  5. **Serverseitige Anomalie-/Verhaltensprüfung** (wird mit Daten besser — genau Stravas
+     Ansatz mit lernenden Modellen).
+  6. **Audit + Beweislast + Verwirkung** — bei Flag muss **der Nutzer** nachweisen;
+     unbewiesen = kein Gewinn; Betrug = Ausschluss + Einsatz verwirkt.
 
 **Zwei Realitäten, die man kennen muss:**
-- **Plattform-Asymmetrie:** iOS ist deutlich schwerer zu täuschen als Android
-  (Mock-Location ist auf Android quasi eingebaut). **Entschieden: iOS zuerst**
-  (Entwicklung + Launch), Android folgt danach.
+- **Plattform-Asymmetrie:** iOS ist tendenziell schwerer zu täuschen (Mock-Location ist
+  auf Android quasi eingebaut). **Aber:** Die Recherche konnte **keinen belastbaren
+  Sicherheitsvorsprung** von iOS belegen → **keine Plattform-Priorität**; die
+  Android-Schwäche wird serverseitig abgefangen, nicht durch die Plattformwahl.
 - **Identitätslücke:** Selbst perfekte *Geräte*-Messung beweist nicht, dass *die Person*
   (kein Stellvertreter) gelaufen ist. Ein Geräte-Fingerabdruck entsperrt das Handy,
   beweist aber nicht die laufende Person; näher dran sind Gesichts-Liveness (ans Konto
@@ -163,7 +192,7 @@ Datenmodell heute schon so anlegen (auch wenn simuliert), damit der Wechsel
 „simuliert → echt gemessen und geprüft" nur ein Austausch der Datenquelle ist, kein Umbau.
 
 **Später:** echte Sensor-Erfassung, Geräte-Attestierung, Server-Adjudikation,
-Wearable-/Liveness-Integration, Anomalie-Modelle.
+Anomalie-Modelle, Audit-Werkzeuge; optionale höhere Prüfstufen (Wearable/Liveness).
 
 ---
 
@@ -204,8 +233,9 @@ Nachrüsten stark verbilligen:
 3. **Modell** so halten, dass eine Wette einen Urheber/Typ hat und Nutzer Rollen
    bekommen können (Samen `BetTag` ist da).
 4. **Lauf** als Bündel roher (später signierter) Sensordaten modellieren, nicht als
-   fertige Zahl; der Pot trägt ein Feld **Liga/Prüfprofil** plus die wirtschaftlichen
-   Parameter (Deckel etc.), fixiert bei Erstellung.
+   fertige Zahl; der Pot trägt ein Feld **Prüfprofil** (vorerst EINE Standardstufe; Feld
+   bleibt für spätere Staffelung offen) plus die wirtschaftlichen Parameter (Deckel etc.),
+   fixiert bei Erstellung. Wett-Regeln von Anfang an mit **Toleranzband** denken.
 
 Alles Schwere — Wechselkurse, Zahlungen, Rollen-Mechanik, Admin-Oberfläche, Moderation,
 Sensor-Erfassung, Attestierung, der Server selbst — bleibt bewusst Zukunft.
@@ -217,86 +247,97 @@ Sensor-Erfassung, Attestierung, der Server selbst — bleibt bewusst Zukunft.
 - Regulatorik/Lizenzen für echtes Geld (länderabhängig; juristischer Rat nötig).
 - Rollen, Rechte, Admin-Oberfläche, Moderations-Werkzeuge.
 - Streckenmesser: echte Sensor-Erfassung, Geräte-Attestierung, Server-Adjudikation,
-  Wearable-/Liveness-Integration, Anomalie-Modelle.
+  Anomalie-Modelle, Audit-Werkzeuge.
+- **Gestufte Prüftiefe (Pot-Ligen)** — nur bei Bedarf; Architektur hält das
+  Prüfprofil-Feld offen.
+- **iOS-Attest-/DeviceCheck-Praxis** und iOS-Mock-Situation gezielt nachrecherchieren
+  (in dieser Runde unbelegt).
+- **Gegenmaßnahmen gegen gefälschte Workouts** in HealthKit/Health Connect (Provenance)
+  vertiefen.
 - Gamification (SOCKS, Batches, Nadeln) — siehe eigene Spec; im MVP ausgelassen.
 
 ---
 
-## 8. Pot-Ligen (Verifikations- und Wirtschafts-Katalog)
+## 8. Pot-Ökonomie & Prüfstufen
 
 **Kerngedanke:** Nicht der einzelne Läufer bestimmt, wie viel im Pot liegt — viele kleine
 Einsätze ergeben einen großen Topf, und harte Ziele konzentrieren die Auszahlung auf
 wenige. Der Anreiz zu betrügen richtet sich nach dem **maximal möglichen Einzel-Gewinn**
-(≈ Pot ÷ erwartete Durchhalter), nicht nach dem Einsatz. Genau daran koppelt die
-Prüftiefe. Umgesetzt wird das über eine kleine Zahl fester **Ligen**; jeder Pot gehört zu
-genau einer.
+(≈ Pot ÷ erwartete Durchhalter), nicht nach dem Einsatz.
+
+**Heutiger Ansatz (vereinfacht):** **EINE solide Standard-Prüfstufe für alle Pots +
+harte Deckel** auf den maximal möglichen Einzel-Gewinn als primäre Bremse. Die früher
+skizzierte Staffelung nach Auszahlungshöhe (Ligen Bronze/Silber/Obsidian) fand **keinen
+dokumentierten Branchen-Präzedenzfall** — sie bleibt eine **offene Option**, kein
+gebautes Feature. Die Architektur hält das Feld „Prüfprofil" am Pot bereit, sodass wir
+bei Bedarf jederzeit tiefere Stufen einführen können, ohne umzubauen.
 
 ### 8.1 Prinzipien (invariant)
 
-1. **Prüftiefe ∝ maximal möglicher Einzel-Gewinn** — nicht Einsatz.
-2. Ein Pot ist ein **typisierter Vertrag**, bei Erstellung fixiert und **unveränderlich**;
-   die Liga ist vor Beitritt sichtbar und wird ausdrücklich akzeptiert.
-3. Jede Liga bündelt drei Dinge: **Wirtschaft** (Währung, Einsatzspanne, Deckel auf den
-   Einzel-Gewinn, Auszahlung, Fee) · **Zutritt** (Vertrauensstufe, Plattform,
-   Geräte-/Wearable-Pflicht) · **Prüfregime** (welche Anti-Betrugs-Bausteine Pflicht sind).
-4. **Deckel = Sicherheits-Bremse:** Er hält den maximal möglichen Einzel-Gewinn *unter*
-   dem Aufwand, die Prüfung dieser Liga zu überwinden. Also keine primär wirtschaftliche,
-   sondern eine **Sicherheitsregel**.
-5. **Kein heimliches Aufsteigen:** Wächst ein Pot an seinen Deckel, wird er **geschlossen**
-   (keine neuen Teilnehmer). Ein Pot kann nicht unter leichten Regeln zu einem großen Ziel
-   anwachsen — größere Pötte müssen als höhere Liga *starten*.
-6. **Wer welche Liga anlegen darf, knüpft an Rollen** (Nutzer vs. Mitarbeiter) — s. 4.3.
-7. Die **Zahlenwerte** unten sind Erst-Vorschläge und tunebar; **fest** ist die Struktur.
+1. **Deckel = Sicherheits-Bremse:** Er hält den maximal möglichen **Einzel-Gewinn** unter
+   dem Aufwand, die Standard-Prüfung zu überwinden. Primär eine Sicherheits-, keine
+   Wirtschaftsregel.
+2. **Kein heimliches Aufsteigen:** Wächst ein Pot an seinen Deckel, wird er **geschlossen**
+   (keine neuen Teilnehmer).
+3. Ein Pot ist ein **typisierter Vertrag**, bei Erstellung fixiert und **unveränderlich**;
+   das Prüfprofil ist vor Beitritt sichtbar und wird akzeptiert.
+4. **Falls** später gestaffelt wird: Prüftiefe ∝ maximal möglicher Einzel-Gewinn.
+5. **Wer welchen Pot-Typ anlegen darf, knüpft an Rollen** (Nutzer vs. Mitarbeiter, s. 4.3).
 
-### 8.2 Prüf-Bausteine (Menü, aus dem Ligen zusammengesetzt werden)
+### 8.2 Standard-Prüfprofil (heute die eine Stufe)
 
-- **B0 — Basis (immer):** Geräte-Attestierung (Apple App Attest / Google Play Integrity)
-  + Server-Urteil über rohe, signierte Sensordaten.
-- **B1 — Sensor-Fusion + Physik-Plausibilität:** GPS ↔ Schrittrhythmus ↔ Höhe;
-  menschliche Tempo-/Beschleunigungsgrenzen; keine Teleports, kein „durch Gebäude/Wasser".
-- **B2 — Anomalie-/Verhaltensprüfung (serverseitig, immer):** unplausible Leistungs-
-  sprünge, bekannte Trickmuster, korrelierte Konten/Geräte/Orte.
-- **B3 — Puls-Wearable Pflicht:** Herzfrequenz-Kurve korreliert mit Tempo/Kadenz.
-- **B4 — Liveness/Ident-Checks im Lauf:** Gesichts-Liveness (ans Konto gebunden);
-  Fingerabdruck als leichtere Variante (mit bekannter Grenze).
-- **B5 — Erhöhte Identitätssicherung:** verifizierte Identität (KYC-artig) für hohe Pötte.
+Pflicht für jeden Geld-Pot:
+- **B0 — Basis:** Geräte-Attestierung (App Attest / Play Integrity, als **Hürde, nicht
+  Wall**) + **Vertrauensanker echter Tracker** mit Herkunfts-/Quell-App-Attribution (keine
+  manuell eingetragenen Workouts) + **Server-Urteil** über rohe, signierte Sensordaten.
+- **B1 — Sensor-Fusion + Physik-Plausibilität:** GPS-Tempo × Kadenz; menschliche
+  Tempo-/Beschleunigungsgrenzen; keine Teleports/„durch Gebäude".
+- **B2 — Anomalie-/Verhaltensprüfung** (serverseitig, lernend).
+- **B7 — Audit + Beweislast + Verwirkung:** Flag (zufällig oder algorithmisch) → **Nutzer**
+  muss nachweisen; unbewiesen = kein Gewinn; Betrug = Ausschluss + Einsatz verwirkt.
+- **Harte Deckel** auf den maximal möglichen Einzel-Gewinn.
+
+### 8.3 Zusatz-Bausteine (Menü für optionale höhere Stufen — später bei Bedarf)
+
+- **B3 — Puls-Wearable Pflicht** (HF-Kurve korreliert mit Tempo/Kadenz).
+- **B4 — Liveness/Ident-Checks im Lauf** (Gesichts-Liveness ans Konto gebunden;
+  Fingerabdruck als leichtere Variante, mit bekannter Grenze).
+- **B5 — Erhöhte Identitätssicherung** (verifizierte Identität / KYC-artig) für hohe Pötte.
 - **B6 — Auszahlungs-Prüffenster + Stichproben-Tiefprüfung + Community-Meldungen.**
+- **Vertrauensstufen:** Neue Konten starten niedrig, steigen mit sauberer Historie.
 
-### 8.3 Vertrauensstufen
+### 8.4 Optionale Eskalationsstufen (Skizze — NICHT heute gebaut)
 
-Neue Konten starten niedrig und steigen mit sauberer Historie. Höhere Ligen verlangen eine
-**Mindest-Vertrauensstufe**. Das begrenzt Einsteiger-Missbrauch und Wegwerf-Konten.
+Falls sich zeigt, dass eine einzige Stufe nicht reicht, ist dies die vorgedachte Leiter
+(Metall-Namen ~ Batch-Bildsprache):
 
-### 8.4 Die Ligen (Erst-Katalog — Zahlen tunebar)
-
-| Liga | Deckel (max. Einzel-Gewinn) | Einsatz | Plattform | Prüfregime (Pflicht) | Anlegbar von |
-|------|------|------|------|------|------|
-| **Bronze — „Einstieg"** | ~50 € | klein | iOS + Android | B0 · B1 · B2 | jeder Nutzer (ab Grund-Vertrauensstufe); Stellvertreter-Restrisiko bewusst akzeptiert |
-| **Silber — „Ambitioniert"** | mittel | mittel | iOS + attestiertes Android | B0 · B1 · B2 · **B3 (Wearable)** · B6 | Nutzer ab höherer Vertrauensstufe |
-| **Obsidian — „High-Performer"** | hoch/offen | höher | iOS + Wearable | B0 · B1 · B2 · B3 · **B4 (Liveness)** · **B5 (Ident)** · B6 | nur Mitarbeiter |
-
-Die Metall-Namen knüpfen an die vorhandene Batch-Bildsprache an; weitere Stufen sind
-denkbar (z. B. eine geldlose „Papier/Jute"-Sozialstufe ganz unten oder eine „Gold"-Stufe
-zwischen Silber und Obsidian). Endgültige Zuordnung mit der SOCKS-/Batch-Spec abstimmen.
+| Stufe | Deckel (max. Einzel-Gewinn) | Zusätzlich zum Standard | Anlegbar von |
+|---|---|---|---|
+| **Bronze** (= heutiger Standard) | niedrig | — | jeder Nutzer |
+| **Silber** | mittel | B3 (Wearable) · B6 (Prüffenster) | Nutzer ab höherer Vertrauensstufe |
+| **Obsidian** | hoch/offen | B3 · B4 (Liveness) · B5 (Ident) · B6 | nur Mitarbeiter |
 
 ### 8.5 Bewusst offen / zu tunen
 
-- Konkrete Deckel-/Einsatz-Zahlen und Fee je Liga.
-- Genaue Zuordnung der Metall-Namen zu Ligen (Abstimmung mit SOCKS/Batch-Spec).
-- Ob Silber ein Wearable **verpflichtet** oder nur stärker gewichtet.
-- Android-Politik (ganz zulassen / nur attestiert / nur niedrige Ligen).
-- Fingerabdruck vs. Gesichts-Liveness als Standard-Ident-Check.
+- Konkrete Deckel-/Einsatz-Zahlen und Fee.
+- Ob und wann eine Staffelung überhaupt eingeführt wird (Hypothese ohne Präzedenz).
+- Genaue Nachweis-Form beim Audit (Screenshot, Foto, Rohdaten-Nachlieferung).
+- Fingerabdruck vs. Gesichts-Liveness als Ident-Check (falls je nötig).
 
 ---
 
 ## 9. Änderungshistorie
 
-- **v1.2 (2026-07-17):** Entscheidung **iOS zuerst** (Entwicklungs-/Launch-Priorität)
-  aufgenommen (3.5 + 4.4).
-- **v1.1 (2026-07-17):** Vierte Rahmenbedingung **Laufkontrolle/Streckenmesser** (4.4)
-  und **Pot-Ligen-Katalog** (Abschnitt 8) ergänzt; Entscheidung 4 (Streckenmesser als
-  Kernstück) aufgenommen; vierter Samen (Lauf = signiertes Sensordaten-Bündel, Pot trägt
-  Liga/Prüfprofil) ergänzt.
+- **v1.3 (2026-07-17):** Nach Best-Practice-Recherche (`Recherche_Streckenmesser_und_Abgleich.md`):
+  **„iOS zuerst" verworfen** (kein belegter Sicherheitsvorsprung) → keine Plattform-Priorität;
+  **Audit + Beweislast + Verwirkung** als Kern-Pfeiler (B7); Attestierung als **Hürde, nicht
+  Wall** präzisiert; **Vertrauensanker echter Tracker + Herkunfts-Attribution** (B0); **Pot-Ligen
+  vereinfacht** auf eine Standard-Prüfstufe + harte Deckel, Staffelung nur als offene Option;
+  Mess-Realität **metergenau → Toleranzbänder**.
+- **v1.2 (2026-07-17):** Entscheidung **iOS zuerst** aufgenommen. *(In v1.3 wieder verworfen.)*
+- **v1.1 (2026-07-17):** Vierte Rahmenbedingung **Laufkontrolle/Streckenmesser** (4.4) und
+  **Pot-Ligen-Katalog** (Abschnitt 8) ergänzt; Entscheidung 4 (Streckenmesser als Kernstück)
+  aufgenommen; vierter Samen (Lauf = signiertes Sensordaten-Bündel, Pot trägt Prüfprofil) ergänzt.
 - **v1.0 (2026-07-17):** Erstfassung. Vier Grundsatz-Entscheidungen festgehalten
   (Grundsprache Englisch; eine Wette = eine Währung, EUR+USD; „Server + App +
   Admin"-Produkt; dieses Dokument angelegt).
