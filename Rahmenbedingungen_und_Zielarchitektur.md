@@ -1,6 +1,6 @@
 # Rahmenbedingungen und Zielarchitektur — BattleBet
 
-**Version:** 1.1
+**Version:** 1.2
 **Stand:** 2026-07-17
 **Status:** lebendes Dokument (wächst mit den Entscheidungen)
 
@@ -45,7 +45,10 @@ müssen:
    *unlohnend* zu machen (ein Regler, kein Ja/Nein). Umgesetzt über **Pot-Ligen**
    (Abschnitt 8): Die Prüftiefe koppelt an den maximal möglichen **Einzel-Gewinn**,
    nicht an den Einsatz; jeder Pot ist ein bei Erstellung fixierter, typisierter Vertrag.
-5. Diese Leitplanken werden hier festgehalten und mitgepflegt.
+5. **iOS zuerst.** Entwicklungs- und Launch-Priorität liegt auf iOS (deutlich schwerer
+   zu täuschen als Android, s. 4.4); Android folgt danach. Das betrifft die *Reihenfolge*
+   des Bauens/Ausrollens — die Plattform-Zulassung je Liga (8.4) bleibt davon unberührt.
+6. Diese Leitplanken werden hier festgehalten und mitgepflegt.
 
 ---
 
@@ -147,7 +150,8 @@ Es sind eigentlich **zwei Probleme**:
 
 **Zwei Realitäten, die man kennen muss:**
 - **Plattform-Asymmetrie:** iOS ist deutlich schwerer zu täuschen als Android
-  (Mock-Location ist auf Android quasi eingebaut). → Produktentscheidung je Liga.
+  (Mock-Location ist auf Android quasi eingebaut). **Entschieden: iOS zuerst**
+  (Entwicklung + Launch), Android folgt danach.
 - **Identitätslücke:** Selbst perfekte *Geräte*-Messung beweist nicht, dass *die Person*
   (kein Stellvertreter) gelaufen ist. Ein Geräte-Fingerabdruck entsperrt das Handy,
   beweist aber nicht die laufende Person; näher dran sind Gesichts-Liveness (ans Konto
@@ -287,6 +291,8 @@ zwischen Silber und Obsidian). Endgültige Zuordnung mit der SOCKS-/Batch-Spec a
 
 ## 9. Änderungshistorie
 
+- **v1.2 (2026-07-17):** Entscheidung **iOS zuerst** (Entwicklungs-/Launch-Priorität)
+  aufgenommen (3.5 + 4.4).
 - **v1.1 (2026-07-17):** Vierte Rahmenbedingung **Laufkontrolle/Streckenmesser** (4.4)
   und **Pot-Ligen-Katalog** (Abschnitt 8) ergänzt; Entscheidung 4 (Streckenmesser als
   Kernstück) aufgenommen; vierter Samen (Lauf = signiertes Sensordaten-Bündel, Pot trägt
