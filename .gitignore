@@ -1,2 +1,8 @@
 .DS_Store
 node_modules/
+
+# Zu grosse Illustrator-Master-Datei (ueber GitHubs 100-MB-Grenze) - bleibt lokal
+*.ai
+
+# Papierkorb-Ordner
+_zum_loeschen/
