@@ -151,7 +151,7 @@ class _MyBetTile extends StatelessWidget {
     return Container(
       height: h,
       decoration: BoxDecoration(
-        color: AppColors.divider,
+        color: Colors.white.withValues(alpha: 0.16),
         borderRadius: BorderRadius.circular(h / 2),
       ),
       child: FractionallySizedBox(
