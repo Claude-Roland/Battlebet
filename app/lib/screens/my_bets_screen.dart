@@ -1,7 +1,8 @@
 // Meine Wetten (Katalog: `MyBetsScreen`).
-// Zeigt die platzierten Wetten mit Fortschritt. Über den Knopf "Aktivität
-// simulieren" wird pro Tipp eine absolvierte Aktivität gutgeschrieben (MVP-
-// Ersatz fürs GPS-Tracking) — die Wette macht Fortschritt, bis sie geschafft ist.
+// Zeigt die platzierten Wetten mit Fortschritt. Über „record run" öffnet sich der
+// RECORDER: ein aufgenommener, qualifizierter Lauf schreibt eine Aktivität gut
+// (ersetzt den früheren „Aktivität simulieren"-Zähler) — die Wette macht
+// Fortschritt, bis sie geschafft ist.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -11,6 +12,7 @@ import '../theme/app_theme.dart';
 import '../widgets/groove_divider.dart';
 import '../widgets/top_nav.dart';
 import 'create_bet_screen.dart';
+import 'recorder_screen.dart';
 
 const _green = Color(0xFF6FBF3B);
 
@@ -134,7 +136,7 @@ class _MyBetTile extends StatelessWidget {
                     ],
                   )
                 else
-                  _simulateButton(),
+                  _recordButton(context),
               ],
             ),
           ),
@@ -143,9 +145,8 @@ class _MyBetTile extends StatelessWidget {
     );
   }
 
-  /// Fortschritt als PILLENRINNE: eine durchgehende, rund abgeschlossene Rinne
-  /// (voller Balken bis 100 %), darin der gefuellte Anteil als Pille. So sieht
-  /// man den noch offenen Rest bis zur Erledigung.
+  /// Fortschritt als PILLENRINNE: durchgehende, rund abgeschlossene Rinne (heller
+  /// Kanal), darin der gefuellte Anteil als Pille — der offene Rest bis 100 % bleibt sichtbar.
   Widget _progressBar(double p, bool done) {
     const h = 8.0;
     return Container(
@@ -167,9 +168,11 @@ class _MyBetTile extends StatelessWidget {
     );
   }
 
-  Widget _simulateButton() {
+  /// Öffnet den Recorder für DIESE Wette. Ein qualifizierter Lauf zählt als Aktivität.
+  Widget _recordButton(BuildContext context) {
     return GestureDetector(
-      onTap: () => myBetsStore.simulateActivity(placed),
+      onTap: () =>
+          Navigator.of(context).push(MaterialPageRoute(builder: (_) => RecorderScreen(placed: placed))),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
@@ -179,9 +182,9 @@ class _MyBetTile extends StatelessWidget {
         child: const Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.directions_run, color: Colors.white, size: 15),
+            Icon(Icons.fiber_manual_record, color: Colors.white, size: 14),
             SizedBox(width: 5),
-            Text('Aktivität simulieren',
+            Text('record run',
                 style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
           ],
         ),

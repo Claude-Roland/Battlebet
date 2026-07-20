@@ -1,17 +1,23 @@
 // Lokaler Speicher der platzierten Wetten ("My Bets") inkl. Fortschritt.
-// MVP: rein im Arbeitsspeicher (kein Backend), Aktivitaeten werden SIMULIERT
-// (Ersatz fuer echtes GPS-Tracking). ChangeNotifier -> UI aktualisiert sich.
+// MVP: rein im Arbeitsspeicher (kein Backend). Fortschritt kommt jetzt aus
+// AUFGENOMMENEN Laeufen (Recorder): ein qualifizierter Lauf = eine Aktivitaet
+// (frueher der „Aktivitaet simulieren"-Zaehler). ChangeNotifier -> UI aktualisiert sich.
 
 import 'package:flutter/foundation.dart';
 
 import '../models/bet.dart';
+import '../models/run.dart';
 
-/// Eine platzierte Wette samt Fortschritt.
+/// Eine platzierte Wette samt Fortschritt und aufgenommenen Laeufen.
 class PlacedBet {
   PlacedBet(this.bet);
 
   final Bet bet;
   int activitiesDone = 0;
+
+  /// Aufgenommene Laeufe (je ein Buendel roher Punkte). Bleiben erhalten —
+  /// spaeter urteilt der Server ueber sie; heute lokaler MVP-Stand.
+  final List<Run> runs = [];
 
   /// Gesamt benoetigte Aktivitaeten = Haeufigkeit/Woche × Wochen.
   int get totalActivities {
@@ -41,10 +47,12 @@ class MyBetsStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Simuliert eine absolvierte Aktivitaet (MVP-Ersatz fuer echtes GPS-Tracking).
-  void simulateActivity(PlacedBet pb) {
-    if (pb.isComplete) return;
-    pb.activitiesDone++;
+  /// Einen aufgenommenen Lauf verbuchen. `qualifies` = Zieldistanz im geforderten
+  /// Tempo-Typ erreicht -> eine Aktivitaet gutschreiben. Der Lauf wird IMMER als
+  /// Roh-Buendel behalten (spaetere Server-Pruefung).
+  void recordRun(PlacedBet pb, Run run, {required bool qualifies}) {
+    pb.runs.add(run);
+    if (qualifies && !pb.isComplete) pb.activitiesDone++;
     notifyListeners();
   }
 }
