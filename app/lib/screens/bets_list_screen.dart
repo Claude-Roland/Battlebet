@@ -1,13 +1,14 @@
 // Bets-Liste (Katalog: `BetsListScreen`) — die Startseite des MVP.
 // Aufbau von oben nach unten:
 //   1) TopNav             -> feste Navigationsleiste
-//   2) FILTER-ZEILE       -> antippbar; oeffnet das WAEHLRAD (Distanz + Einsatz + Haeufigkeit).
-//                            Zeigt kompakt die aktiven Filter; Tune-Symbol signalisiert „tippbar".
+//   2) FILTER-ZEILE       -> antippbar; oeffnet das WAEHLRAD (Sport + Distanz + Einsatz + Haeufigkeit).
+//                            Zeigt links den gewaehlten Sport, rechts kompakt die aktiven Filter.
 //   3) SORTIER-KOPFZEILE  -> vier antippbare Schluessel: Neu | Distanz | Einsatz | Wertzuwachs.
 //   4) Liste der BetRow (erst GEFILTERT, dann SORTIERT), getrennt durch GrooveDivider.
 //
-// MVP: nur Joggen -> die Sportart ist fix „jogging"; das Waehlrad filtert Distanz,
-// Einsatz und Haeufigkeit. Der Sportart-Filter kommt, sobald es mehr als eine gibt.
+// MVP: die Beispiel-Wetten sind alle „jogging". Das Sport-Rad bietet schon jogging
+// + running an (Samen fuer mehr Sportarten); „running" liefert heute noch eine leere
+// Liste (Leerzustand). Weitere Sportarten kommen einfach als weitere Rad-Eintraege.
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -54,9 +55,11 @@ class _BetsListScreenState extends State<BetsListScreen> {
   BetSortKey _key = BetSortKey.neu;
   bool _desc = true;
 
-  // --- Filter (Waehlrad). 0 bzw. 1 bedeuten „alle". ---
+  // --- Filter (Waehlrad). null / 0 / 1 bedeuten „alle". ---
+  static const List<Sport> _sportChoices = [Sport.jogging, Sport.running]; // waechst mit mehr Sportarten
   static const List<double> _distSteps = [0, 5, 7, 10, 15, 20, 50, 100, 200];
   static const List<int> _stakeSteps = [0, 5, 10, 20, 30, 50, 80, 100]; // ganze Waehrungseinheiten
+  Sport? _filterSport; // null = alle Sportarten
   double _minDist = 0; // ab X km
   int _minStake = 0; // ab X € (Einsatz)
   int _minFreq = 1; // ab X ×/Woche
@@ -85,10 +88,11 @@ class _BetsListScreenState extends State<BetsListScreen> {
     }
   }
 
-  /// Erst filtern (Distanz + Einsatz + Haeufigkeit), dann nach dem aktiven Schluessel sortieren.
+  /// Erst filtern (Sport + Distanz + Einsatz + Haeufigkeit), dann sortieren.
   List<Bet> get _visibleBets {
     final list = sampleBets
         .where((b) =>
+            (_filterSport == null || b.sport == _filterSport) &&
             b.distanceKm >= _minDist &&
             b.stake.minor >= _minStake * 100 &&
             b.iterationsPerWeek >= _minFreq)
@@ -138,14 +142,15 @@ class _BetsListScreenState extends State<BetsListScreen> {
     );
   }
 
-  // 2) Filter-/Vorauswahl-Zeile — antippbar, oeffnet das Waehlrad. Zeigt kompakt
-  //    nur die aktiven Filter (sonst „alle Wetten").
+  // 2) Filter-/Vorauswahl-Zeile — antippbar, oeffnet das Waehlrad. Links der Sport,
+  //    rechts kompakt nur die aktiven Zahlen-Filter.
   Widget _filterRow() {
+    final sportTxt = _filterSport?.label ?? 'alle Sportarten';
     final parts = <String>[];
     if (_minDist > 0) parts.add('ab ${_fmtKm(_minDist)} km');
     if (_minStake > 0) parts.add('ab $_minStake €');
     if (_minFreq > 1) parts.add('ab $_minFreq×/W');
-    final txt = parts.isEmpty ? 'alle Wetten' : parts.join('  ·  ');
+    final rest = parts.join('  ·  ');
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: _openFilter,
@@ -154,11 +159,11 @@ class _BetsListScreenState extends State<BetsListScreen> {
         padding: const EdgeInsets.fromLTRB(14, 0, 12, 10),
         child: Row(
           children: [
-            const Text('jogging',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
+            Text(sportTxt,
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(txt,
+              child: Text(rest,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(color: Colors.white.withValues(alpha: 0.92), fontSize: 13)),
@@ -170,7 +175,7 @@ class _BetsListScreenState extends State<BetsListScreen> {
     );
   }
 
-  // Leerzustand, wenn kein Bet zum Filter passt.
+  // Leerzustand, wenn kein Bet zum Filter passt (z. B. „running", solange es nur jogging gibt).
   Widget _emptyFilter() {
     return Center(
       child: Padding(
@@ -185,6 +190,7 @@ class _BetsListScreenState extends State<BetsListScreen> {
             const SizedBox(height: 12),
             GestureDetector(
               onTap: () => setState(() {
+                _filterSport = null;
                 _minDist = 0;
                 _minStake = 0;
                 _minFreq = 1;
@@ -205,16 +211,20 @@ class _BetsListScreenState extends State<BetsListScreen> {
     );
   }
 
-  // Das „geoeffnete Waehlrad": drei Trommeln (Distanz, Einsatz, Haeufigkeit).
+  // Das „geoeffnete Waehlrad": vier Trommeln (Sport, Distanz, Einsatz, Haeufigkeit).
   void _openFilter() {
+    final sportItems = ['alle', ..._sportChoices.map((s) => s.label)];
     final distItems = _distSteps.map((d) => d == 0 ? 'alle' : 'ab ${_fmtKm(d)} km').toList();
     final stakeItems = _stakeSteps.map((s) => s == 0 ? 'alle' : 'ab $s €').toList();
     final freqItems = List.generate(7, (i) => i == 0 ? 'alle' : 'ab ${i + 1}×/W');
+    int sportIdx = _filterSport == null ? 0 : _sportChoices.indexOf(_filterSport!) + 1;
+    if (sportIdx < 0) sportIdx = 0;
     int distIdx = _distSteps.indexOf(_minDist);
     if (distIdx < 0) distIdx = 0;
     int stakeIdx = _stakeSteps.indexOf(_minStake);
     if (stakeIdx < 0) stakeIdx = 0;
     int freqIdx = (_minFreq - 1).clamp(0, 6);
+    final sportCtrl = FixedExtentScrollController(initialItem: sportIdx);
     final distCtrl = FixedExtentScrollController(initialItem: distIdx);
     final stakeCtrl = FixedExtentScrollController(initialItem: stakeIdx);
     final freqCtrl = FixedExtentScrollController(initialItem: freqIdx);
@@ -226,7 +236,7 @@ class _BetsListScreenState extends State<BetsListScreen> {
           borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
       builder: (ctx) => SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 12, 14, 16),
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -237,9 +247,11 @@ class _BetsListScreenState extends State<BetsListScreen> {
                   const Spacer(),
                   GestureDetector(
                     onTap: () {
+                      sportIdx = 0;
                       distIdx = 0;
                       stakeIdx = 0;
                       freqIdx = 0;
+                      sportCtrl.jumpToItem(0);
                       distCtrl.jumpToItem(0);
                       stakeCtrl.jumpToItem(0);
                       freqCtrl.jumpToItem(0);
@@ -254,9 +266,10 @@ class _BetsListScreenState extends State<BetsListScreen> {
                 height: 176,
                 child: Row(
                   children: [
-                    _filterWheel('ab Distanz', distItems, distCtrl, (i) => distIdx = i),
-                    _filterWheel('ab Einsatz', stakeItems, stakeCtrl, (i) => stakeIdx = i),
-                    _filterWheel('ab Häufigkeit', freqItems, freqCtrl, (i) => freqIdx = i),
+                    _filterWheel('Sport', sportItems, sportCtrl, (i) => sportIdx = i),
+                    _filterWheel('Distanz', distItems, distCtrl, (i) => distIdx = i),
+                    _filterWheel('Einsatz', stakeItems, stakeCtrl, (i) => stakeIdx = i),
+                    _filterWheel('Häufigkeit', freqItems, freqCtrl, (i) => freqIdx = i),
                   ],
                 ),
               ),
@@ -269,6 +282,7 @@ class _BetsListScreenState extends State<BetsListScreen> {
                       backgroundColor: AppColors.orange, shape: const StadiumBorder()),
                   onPressed: () {
                     setState(() {
+                      _filterSport = sportIdx == 0 ? null : _sportChoices[sportIdx - 1];
                       _minDist = _distSteps[distIdx];
                       _minStake = _stakeSteps[stakeIdx];
                       _minFreq = freqIdx + 1;
@@ -284,6 +298,7 @@ class _BetsListScreenState extends State<BetsListScreen> {
         ),
       ),
     ).whenComplete(() {
+      sportCtrl.dispose();
       distCtrl.dispose();
       stakeCtrl.dispose();
       freqCtrl.dispose();
@@ -319,8 +334,9 @@ class _BetsListScreenState extends State<BetsListScreen> {
                 for (final it in items)
                   Center(
                     child: Text(it,
+                        maxLines: 1,
                         style: const TextStyle(
-                            color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600)),
+                            color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
                   ),
               ],
             ),
