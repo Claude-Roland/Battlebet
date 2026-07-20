@@ -1,19 +1,18 @@
 // BetEconomics — die echte Wett-Oekonomie eines Pots (ersetzt die Platzhalter).
 // Grundlage: Rahmenbedingungen_und_Zielarchitektur.md, Abschnitt 8 (Pot-Oekonomie).
 //
-// So funktioniert der Pot (Roland-Regeln, 2026-07-20):
+// So funktioniert der Pot (Roland-Regeln):
 //   • Viele Einsaetze fliessen in EINEN Topf (Pot).  Eine Wette = eine Waehrung.
 //   • Wer aussteigt, VERLIERT seinen Einsatz — das Geld bleibt im Topf und
 //     erhoeht den Gewinn der Durchhalter.
 //   • Die Plattform nimmt eine FEE vom Topf (Standard 10 %).
 //   • Was uebrig bleibt, teilen sich die DURCHHALTER (finishers) zu gleichen Teilen.
-//   • "increase in value" wird daraus ABGELEITET (kein Eingabewert): wenige
-//     Durchhalter an einem vollen Topf → hoher Multiplikator.
-//   • DECKEL = feste Topf-Hoehe (potCap). Aus Topf-Hoehe ÷ Einsatz ergibt sich
-//     die maximale Teilnehmerzahl; ist der Topf voll, nimmt er niemanden mehr auf
-//     ("kein heimliches Aufsteigen").
-//
-// Alle Werte werden hier aus wenigen echten Zahlen gerechnet — nicht mehr geschaetzt.
+//   • "increase in value" wird daraus ABGELEITET (kein Eingabewert).
+//   • DECKEL = feste Topf-Hoehe (potCap) aus dem Pot-Typ. Aus Topf-Hoehe ÷ Einsatz
+//     ergibt sich die maximale Teilnehmerzahl; ist der Topf voll, nimmt er niemanden
+//     mehr auf ("kein heimliches Aufsteigen").
+//   • UNLIMITED: potCap = null -> kein Deckel, keine Hoechst-Teilnehmerzahl,
+//     nie "voll" (nur fuer Obsidian).
 
 import 'money.dart';
 
@@ -21,10 +20,10 @@ class BetEconomics {
   /// Einsatz je Teilnehmer (fix bei Erstellung).
   final Money stake;
 
-  /// Feste Topf-Obergrenze (fix bei Erstellung). Begrenzt Teilnehmer und Gewinn.
-  final Money potCap;
+  /// Fester Topf-Deckel; null = unbegrenzt (Unlimited-Pot).
+  final Money? potCap;
 
-  /// Plattform-Fee in Basispunkten: 1000 = 10 %. Fix bei Erstellung.
+  /// Plattform-Fee in Basispunkten: 1000 = 10 %.
   final int feeBps;
 
   /// Wie viele insgesamt eingezahlt haben (Starter). Treibt die Pot-Groesse.
@@ -41,11 +40,14 @@ class BetEconomics {
     required this.dropouts,
   });
 
-  /// Maximale Starterzahl = Topf-Hoehe ÷ Einsatz (abgerundet).
-  int get maxStarters => stake.minor <= 0 ? 0 : potCap.minor ~/ stake.minor;
+  bool get isUnlimited => potCap == null;
 
-  /// Topf voll? Dann keine neuen Teilnehmer mehr (Pot geschlossen).
-  bool get isFull => starters >= maxStarters;
+  /// Maximale Starterzahl = Topf-Hoehe ÷ Einsatz (abgerundet); null bei unbegrenzt.
+  int? get maxStarters =>
+      (isUnlimited || stake.minor <= 0) ? null : potCap!.minor ~/ stake.minor;
+
+  /// Topf voll? Nur bei begrenztem Topf moeglich.
+  bool get isFull => maxStarters != null && starters >= maxStarters!;
 
   /// Noch dabei = Durchhalter (mindestens 1, um Division durch 0 zu vermeiden).
   int get finishers {
@@ -66,7 +68,6 @@ class BetEconomics {
   Money get payoutPerFinisher => distributable.dividedBy(finishers);
 
   /// Wertsteigerung je Durchhalter in Prozent (abgeleitet, kann negativ sein).
-  /// -10 % heisst: alle halten durch, es bleibt nur die Fee als "Verlust".
   double get increasePct =>
       stake.minor == 0 ? 0 : (payoutPerFinisher.minor / stake.minor - 1) * 100;
 

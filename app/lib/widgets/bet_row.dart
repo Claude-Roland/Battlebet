@@ -1,20 +1,19 @@
 // Wett-Zeile (Katalog: `BetRow`) — eine Zeile der Bets-Liste.
 // Zwei Textzeilen:
-//   Zeile 1: Name + Sportart (+ optionaler Tag) .......... Bookmark-Flag (rechts)
+//   Zeile 1: Name + Sportart (+ Tag) + Pot-Typ-Chip .......... Bookmark/Schloss
 //   Zeile 2: [Sport-Icon] distance | interval | expiration | entry price | increase
 //
-// Das Sport-Icon links ist Rolands echtes SVG (Jogger-Icon / Renner-Icon, weiss).
-// Das Socken-Icon aus dem Entwurf ist Gamification und bleibt im MVP weg.
-// Die Zeilen werden im BetsListScreen durch einen GrooveDivider (Trenn-Nut) getrennt.
-// Antippen oeffnet spaeter die Bet-Card (noch nicht verdrahtet).
-//
-// Die Spaltenbreiten (flex*) sind oeffentlich, damit der Spaltenkopf exakt
-// dieselben Werte nutzt und alles fluchtet.
+// Nach Rolands Prinzip „gesperrt sichtbar als Anreiz": Pots, die die aktuelle
+// Vertrauensstufe (noch) nicht eroeffnen/betreten darf, werden GEDIMMT und tragen
+// statt der Bookmark ein Schloss. Sichtbar bleiben sie — man kann sie antippen und
+// ansehen, nur nicht beitreten. Reagiert live auf den Status-Umschalter.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import '../data/user_session.dart';
 import '../models/bet.dart';
+import '../models/tiers.dart';
 import '../theme/app_theme.dart';
 
 class BetRow extends StatelessWidget {
@@ -29,18 +28,32 @@ class BetRow extends StatelessWidget {
   static const int flexPrice = 22;
   static const int flexIncrease = 14;
 
-  // Breite der Sport-Ikon-Spalte links und der Bookmark-Spalte rechts.
+  // Breite der Sport-Ikon-Spalte links und der Bookmark-/Schloss-Spalte rechts.
   static const double iconColWidth = 30;
   static const double bookmarkColWidth = 18;
 
   @override
   Widget build(BuildContext context) {
+    // Reagiert auf den Vorschau-Status: gesperrte Pots werden gedimmt.
+    return AnimatedBuilder(
+      animation: userSession,
+      builder: (context, _) {
+        final locked = !bet.tier.allows(userSession.tier);
+        return Opacity(
+          opacity: locked ? 0.4 : 1.0,
+          child: _content(locked),
+        );
+      },
+    );
+  }
+
+  Widget _content(bool locked) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Zeile 1: Name + Sportart + Tag  ...........  Bookmark
+          // Zeile 1: Name + Sportart + Tag + Pot-Typ  ...........  Bookmark/Schloss
           Padding(
             padding: const EdgeInsets.only(left: iconColWidth, bottom: 3),
             child: Row(
@@ -60,10 +73,14 @@ class BetRow extends StatelessWidget {
                   const SizedBox(width: 6),
                   _tagChip(bet.tag),
                 ],
+                const SizedBox(width: 6),
+                _tierChip(bet.tier),
                 const Spacer(),
                 Icon(
-                  bet.bookmarked ? Icons.bookmark : Icons.bookmark_border,
-                  color: bet.bookmarked ? AppColors.orange : AppColors.textMuted,
+                  locked ? Icons.lock_outline : (bet.bookmarked ? Icons.bookmark : Icons.bookmark_border),
+                  color: locked
+                      ? AppColors.textMuted
+                      : (bet.bookmarked ? AppColors.orange : AppColors.textMuted),
                   size: 15,
                 ),
               ],
@@ -120,6 +137,19 @@ class BetRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
       decoration: BoxDecoration(color: color.withValues(alpha: 0.9), borderRadius: BorderRadius.circular(3)),
       child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 9)),
+    );
+  }
+
+  /// Pot-Typ-Chip (Limited / Limited large / Unlimited) — als dezenter Umriss.
+  Widget _tierChip(PotTier tier) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(3),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Text(tier.shortLabel,
+          style: const TextStyle(color: AppColors.textMuted, fontSize: 9, fontWeight: FontWeight.w600)),
     );
   }
 

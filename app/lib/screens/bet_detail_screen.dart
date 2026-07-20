@@ -1,23 +1,24 @@
 // Bet-Card / Detailansicht (Katalog: `BetDetailScreen`).
-// Oeffnet sich beim Antippen einer Zeile in der Bets-Liste und zeigt die
-// WETT-OEKONOMIE einer Wette:
-//   Header (orange): Sport-Icon, Name, Sportart, Globus, pot / expires in /
-//                    total duration / ends at
-//   Body: next bet check, activities before check, interval, distance,
-//         "bet data"-Kurve, participants/starters/dropouts,
-//         increase in value, stake, fee, payout, pot cap, und der "bet"-Knopf.
-// Gamification (socks/batches) ist im MVP bewusst weggelassen.
+// Zeigt die WETT-OEKONOMIE einer Wette (echt gerechnet, keine Platzhalter):
+//   Header (orange): Sport-Icon, Name, Sportart, Globus, pot / expires / duration / ends
+//   Body: next bet check, activities, interval, distance, "bet data"-Kurve,
+//         participants/starters/dropouts, increase, stake, fee, payout, pot type,
+//         und der grosse "bet"-Knopf.
 //
-// Die Pot-Zahlen (pot, payout, increase, Deckel) sind KEINE Platzhalter mehr:
-// sie werden von `BetEconomics` aus den echten Vertragsfeldern der Wette
-// gerechnet (Einsatz, Topf-Deckel, Fee, Starter, Aussteiger). Geld ist `Money`.
+// Der "bet"-Knopf hat vier Zustaende (reagiert auf Store + Vertrauensstufe):
+//   schon beigetreten     -> gesperrt "placed" (fuehrt zu My Bets)
+//   Stufe zu niedrig       -> gesperrt "requires <Stufe> status"  (Anreiz)
+//   Topf voll (nur limit.) -> gesperrt "pot full · closed"
+//   sonst                  -> oranger "bet"-Knopf (oeffnet Bestaetigung)
 
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../data/my_bets_store.dart';
+import '../data/user_session.dart';
 import '../models/bet.dart';
 import '../models/bet_economics.dart';
+import '../models/tiers.dart';
 import '../theme/app_theme.dart';
 import '../widgets/digital_countdown.dart';
 import '../widgets/groove_divider.dart';
@@ -104,7 +105,6 @@ class BetDetailScreen extends StatelessWidget {
               Expanded(
                 child: Column(
                   children: [
-                    // Aktueller Topf (Einsatz × Starter).
                     _kvWhite('pot', _eco.pot.format(), big: true),
                     _kvWhite('expires in', '${bet.expirationDays}d'),
                     _kvWhite('total duration', '${bet.expirationDays}d'),
@@ -124,13 +124,15 @@ class BetDetailScreen extends StatelessWidget {
     final feePct = (bet.feeBps / 100).toStringAsFixed(bet.feeBps % 100 == 0 ? 0 : 1);
     final active = bet.starters - bet.dropouts;
     final increaseColor = _eco.increasePctRounded >= 0 ? AppColors.gain : AppColors.textMuted;
+    final potType = bet.tier.isUnlimited
+        ? '${bet.tier.label}  ·  no limit'
+        : '${bet.tier.label}  ·  max ${_eco.maxStarters}';
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Countdown in Digital-Ziffern (Sieben-Segment).
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 3),
             child: Row(
@@ -152,8 +154,6 @@ class BetDetailScreen extends StatelessWidget {
           const SizedBox(height: 8),
           ValueChart(data: _valueHistory),
           const SizedBox(height: 10),
-          // participants = aktuell noch dabei; starters = alle, die eingezahlt haben;
-          // dropouts = ausgestiegen (Einsatz bleibt im Topf).
           Row(
             children: [
               _miniStat('participants', '$active'),
@@ -162,60 +162,28 @@ class BetDetailScreen extends StatelessWidget {
             ],
           ),
           const GrooveDivider(),
-          // --- Echte Pot-Oekonomie ---
           _kv('increase in value', '${_eco.increasePctRounded}%', valueColor: increaseColor, valueBig: true),
           _kv('stake', bet.stake.format()),
           _kv('platform fee ($feePct%)', '- ${_eco.fee.format()}'),
           _kv('payout', _eco.payoutPerFinisher.format(), valueColor: AppColors.price, valueBig: true),
-          _kv('pot cap', '${bet.potCap.format()}  ·  max ${_eco.maxStarters}'),
-          // Pruefprofil ist vor dem Beitritt sichtbar (Zielarchitektur 8.1.3);
-          // heute immer "standard" — Samen fuer die spaetere Bronze/Silber/Obsidian-Leiter.
-          _kv('check profile', bet.checkProfile.name),
+          // Pot-Typ = Deckel + Zugang (statt der frueheren "check profile"-Zeile).
+          _kv('pot type', potType),
           const SizedBox(height: 18),
-          // Call to Action: der grosse "bet"-Knopf. Drei Zustaende, reagieren auf den Store:
-          //   schon beigetreten -> gesperrt "placed" (fuehrt zu My Bets)
-          //   Topf voll          -> gesperrt "pot full" (kein heimliches Aufsteigen)
-          //   sonst              -> oranger "bet"-Knopf (oeffnet Bestaetigung)
           AnimatedBuilder(
-            animation: myBetsStore,
+            animation: Listenable.merge([myBetsStore, userSession]),
             builder: (context, _) {
               final joined = myBetsStore.hasJoined(bet);
+              final eligible = bet.tier.allows(userSession.tier);
               final full = bet.economics.isFull;
               return SizedBox(
                 height: 52,
                 child: joined
-                    ? ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.surface,
-                          shape: const StadiumBorder(),
-                          side: const BorderSide(color: _joinedGreen, width: 1.5),
-                        ),
-                        onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const MyBetsScreen()),
-                        ),
-                        icon: const Icon(Icons.check_circle, color: _joinedGreen, size: 20),
-                        label: const Text('placed · view in My Bets',
-                            style: TextStyle(color: _joinedGreen, fontSize: 15, fontWeight: FontWeight.w700)),
-                      )
-                    : full
-                        ? ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.surface,
-                              shape: const StadiumBorder(),
-                              disabledBackgroundColor: AppColors.surface,
-                            ),
-                            onPressed: null,
-                            icon: const Icon(Icons.lock_outline, color: AppColors.textMuted, size: 18),
-                            label: const Text('pot full · closed',
-                                style: TextStyle(color: AppColors.textMuted, fontSize: 15, fontWeight: FontWeight.w700)),
-                          )
-                        : ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.orange, shape: const StadiumBorder()),
-                            onPressed: () => _confirmJoin(context),
-                            child: const Text('bet',
-                                style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
-                          ),
+                    ? _placedButton(context)
+                    : !eligible
+                        ? _lockedButton('requires ${bet.tier.requires.label} status')
+                        : full
+                            ? _lockedButton('pot full · closed')
+                            : _betButton(context),
               );
             },
           ),
@@ -224,10 +192,50 @@ class BetDetailScreen extends StatelessWidget {
     );
   }
 
+  // ---- Knopf-Zustaende ----
+
+  Widget _betButton(BuildContext context) {
+    return ElevatedButton(
+      style: ElevatedButton.styleFrom(backgroundColor: AppColors.orange, shape: const StadiumBorder()),
+      onPressed: () => _confirmJoin(context),
+      child: const Text('bet',
+          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
+    );
+  }
+
+  Widget _placedButton(BuildContext context) {
+    return ElevatedButton.icon(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.surface,
+        shape: const StadiumBorder(),
+        side: const BorderSide(color: _joinedGreen, width: 1.5),
+      ),
+      onPressed: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const MyBetsScreen()),
+      ),
+      icon: const Icon(Icons.check_circle, color: _joinedGreen, size: 20),
+      label: const Text('placed · view in My Bets',
+          style: TextStyle(color: _joinedGreen, fontSize: 15, fontWeight: FontWeight.w700)),
+    );
+  }
+
+  /// Gesperrter Knopf (Status zu niedrig oder Topf voll) — sichtbar als Anreiz.
+  Widget _lockedButton(String text) {
+    return ElevatedButton.icon(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.surface,
+        disabledBackgroundColor: AppColors.surface,
+        shape: const StadiumBorder(),
+      ),
+      onPressed: null,
+      icon: const Icon(Icons.lock_outline, color: AppColors.textMuted, size: 18),
+      label: Text(text,
+          style: const TextStyle(color: AppColors.textMuted, fontSize: 15, fontWeight: FontWeight.w700)),
+    );
+  }
+
   // ---- Beitreten (Bestaetigung -> ablegen -> zu My Bets) ----
 
-  /// Bestaetigungsdialog vor dem Beitreten: zeigt Einsatz und die (festen)
-  /// Bedingungen der Wette. Analog zum "place bet"-Dialog beim Wette-Anlegen.
   void _confirmJoin(BuildContext context) {
     final weeks = (bet.expirationDays / 7).round();
     showDialog(
@@ -245,6 +253,8 @@ class BetDetailScreen extends StatelessWidget {
             _confirmRow('stake', bet.stake.format(), valueColor: AppColors.price),
             const SizedBox(height: 6),
             _confirmRow('goal', '${_fmtKm(bet.distanceKm)} km · ${bet.iterationsPerWeek}× a week · $weeks weeks'),
+            const SizedBox(height: 6),
+            _confirmRow('pot', bet.tier.label),
           ],
         ),
         actions: [
@@ -265,7 +275,6 @@ class BetDetailScreen extends StatelessWidget {
     );
   }
 
-  /// Wette in "My Bets" ablegen und dorthin wechseln (ersetzt die Detailseite).
   void _join(BuildContext context) {
     final messenger = ScaffoldMessenger.of(context);
     myBetsStore.add(bet);
@@ -275,7 +284,6 @@ class BetDetailScreen extends StatelessWidget {
     messenger.showSnackBar(const SnackBar(content: Text('Bet successfully placed')));
   }
 
-  /// Eine Zeile im Bestaetigungsdialog: schmales Label links, Wert rechts.
   Widget _confirmRow(String label, String value, {Color valueColor = AppColors.textPrimary}) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -292,7 +300,6 @@ class BetDetailScreen extends StatelessWidget {
 
   // ---- kleine Bausteine ----
 
-  /// Label links, Wert rechts (heller Body-Stil).
   Widget _kv(String label, String value, {Color valueColor = AppColors.textPrimary, bool valueBig = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
@@ -309,7 +316,6 @@ class BetDetailScreen extends StatelessWidget {
     );
   }
 
-  /// Label links, Wert rechts (weisser Header-Stil).
   Widget _kvWhite(String label, String value, {bool big = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 1),

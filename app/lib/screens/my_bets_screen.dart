@@ -143,16 +143,25 @@ class _MyBetTile extends StatelessWidget {
     );
   }
 
+  /// Fortschritt als PILLENRINNE: eine durchgehende, rund abgeschlossene Rinne
+  /// (voller Balken bis 100 %), darin der gefuellte Anteil als Pille. So sieht
+  /// man den noch offenen Rest bis zur Erledigung.
   Widget _progressBar(double p, bool done) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(3),
-      child: Container(
-        height: 6,
+    const h = 8.0;
+    return Container(
+      height: h,
+      decoration: BoxDecoration(
         color: AppColors.divider,
-        child: FractionallySizedBox(
-          alignment: Alignment.centerLeft,
-          widthFactor: p.clamp(0.0, 1.0),
-          child: Container(color: done ? _green : AppColors.orange),
+        borderRadius: BorderRadius.circular(h / 2),
+      ),
+      child: FractionallySizedBox(
+        alignment: Alignment.centerLeft,
+        widthFactor: p.clamp(0.0, 1.0),
+        child: Container(
+          decoration: BoxDecoration(
+            color: done ? _green : AppColors.orange,
+            borderRadius: BorderRadius.circular(h / 2),
+          ),
         ),
       ),
     );
