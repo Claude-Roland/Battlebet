@@ -48,7 +48,7 @@ class TopNav extends StatelessWidget {
         child: Text(
           label,
           style: TextStyle(
-            color: Colors.white.withOpacity(active ? 1 : 0.75),
+            color: Colors.white.withValues(alpha: active ? 1 : 0.75),
             fontWeight: active ? FontWeight.w700 : FontWeight.w400,
             fontSize: 15,
           ),

@@ -118,7 +118,7 @@ class BetRow extends StatelessWidget {
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-      decoration: BoxDecoration(color: color.withOpacity(0.9), borderRadius: BorderRadius.circular(3)),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.9), borderRadius: BorderRadius.circular(3)),
       child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 9)),
     );
   }
