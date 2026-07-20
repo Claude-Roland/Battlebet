@@ -15,11 +15,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import '../data/my_bets_store.dart';
 import '../models/bet.dart';
 import '../theme/app_theme.dart';
 import '../widgets/digital_countdown.dart';
 import '../widgets/groove_divider.dart';
 import '../widgets/value_chart.dart';
+import 'my_bets_screen.dart';
+
+/// Gruen fuer den "bereits platziert"-Zustand (wie in my_bets_screen).
+const _joinedGreen = Color(0xFF6FBF3B);
 
 class BetDetailScreen extends StatelessWidget {
   const BetDetailScreen({super.key, required this.bet});
@@ -156,20 +161,109 @@ class BetDetailScreen extends StatelessWidget {
           _kv('total price', _money(bet.entryPrice)),
           _kv('payout', _money(_payout), valueColor: AppColors.price, valueBig: true),
           const SizedBox(height: 18),
-          // Call to Action: der grosse "bet"-Button (Beitreten kommt spaeter).
-          SizedBox(
-            height: 52,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.orange, shape: const StadiumBorder()),
-              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Wette platzieren kommt als Naechstes.')),
-              ),
-              child: const Text('bet',
-                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
-            ),
+          // Call to Action: der grosse "bet"-Knopf.
+          //  - noch nicht beigetreten -> oranger "bet"-Knopf, oeffnet die Bestaetigung.
+          //  - schon beigetreten      -> gesperrter, gruen markierter "placed"-Knopf,
+          //                              der zu "My Bets" fuehrt (kein Doppel-Beitritt).
+          // Reagiert auf myBetsStore, damit beim erneuten Oeffnen der Zustand stimmt.
+          AnimatedBuilder(
+            animation: myBetsStore,
+            builder: (context, _) {
+              final joined = myBetsStore.hasJoined(bet);
+              return SizedBox(
+                height: 52,
+                child: joined
+                    ? ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.surface,
+                          shape: const StadiumBorder(),
+                          side: const BorderSide(color: _joinedGreen, width: 1.5),
+                        ),
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const MyBetsScreen()),
+                        ),
+                        icon: const Icon(Icons.check_circle, color: _joinedGreen, size: 20),
+                        label: const Text('placed · view in My Bets',
+                            style: TextStyle(color: _joinedGreen, fontSize: 15, fontWeight: FontWeight.w700)),
+                      )
+                    : ElevatedButton(
+                        style:
+                            ElevatedButton.styleFrom(backgroundColor: AppColors.orange, shape: const StadiumBorder()),
+                        onPressed: () => _confirmJoin(context),
+                        child: const Text('bet',
+                            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
+                      ),
+              );
+            },
           ),
         ],
       ),
+    );
+  }
+
+  // ---- Beitreten (Bestaetigung -> ablegen -> zu My Bets) ----
+
+  /// Bestaetigungsdialog vor dem Beitreten: zeigt Einsatz und die (festen)
+  /// Bedingungen der Wette. Analog zum "place bet"-Dialog beim Wette-Anlegen.
+  void _confirmJoin(BuildContext context) {
+    final weeks = (bet.expirationDays / 7).round();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('place bet', style: TextStyle(color: AppColors.textPrimary)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('You are about to join "${bet.name}".',
+                style: const TextStyle(color: AppColors.textMuted, fontSize: 14)),
+            const SizedBox(height: 14),
+            _confirmRow('stake', _money(bet.entryPrice), valueColor: AppColors.price),
+            const SizedBox(height: 6),
+            _confirmRow('goal', '${_fmtKm(bet.distanceKm)} km · ${bet.iterationsPerWeek}× a week · $weeks weeks'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('back', style: TextStyle(color: AppColors.textMuted)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.orange, shape: const StadiumBorder()),
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              _join(context);
+            },
+            child: const Text('place', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Wette in "My Bets" ablegen und dorthin wechseln (ersetzt die Detailseite).
+  void _join(BuildContext context) {
+    final messenger = ScaffoldMessenger.of(context);
+    myBetsStore.add(bet);
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => const MyBetsScreen()),
+    );
+    messenger.showSnackBar(const SnackBar(content: Text('Bet successfully placed')));
+  }
+
+  /// Eine Zeile im Bestaetigungsdialog: schmales Label links, Wert rechts.
+  Widget _confirmRow(String label, String value, {Color valueColor = AppColors.textPrimary}) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+            width: 52,
+            child: Text(label, style: const TextStyle(color: AppColors.textMuted, fontSize: 12))),
+        Expanded(
+            child: Text(value,
+                style: TextStyle(color: valueColor, fontSize: 14, fontWeight: FontWeight.w700))),
+      ],
     );
   }
 

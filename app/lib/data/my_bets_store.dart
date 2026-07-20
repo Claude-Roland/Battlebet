@@ -29,6 +29,12 @@ class MyBetsStore extends ChangeNotifier {
 
   List<PlacedBet> get bets => List.unmodifiable(_bets);
 
+  /// Ist der Nutzer dieser (konkreten) Wette schon beigetreten?
+  /// Prueft die Identitaet der Wett-Instanz — Beispiel-Wetten sind `const`
+  /// und damit stabil, also erkennt `identical` einen erneuten Beitritt.
+  /// (Spaeter, mit echten Server-IDs, wird hier ueber die Wett-ID verglichen.)
+  bool hasJoined(Bet bet) => _bets.any((pb) => identical(pb.bet, bet));
+
   void add(Bet bet) {
     _bets.insert(0, PlacedBet(bet)); // neueste zuerst
     notifyListeners();
