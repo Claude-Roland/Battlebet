@@ -107,7 +107,6 @@ class BetDetailScreen extends StatelessWidget {
                   children: [
                     _kvWhite('pot', _eco.pot.format(), big: true),
                     _kvWhite('expires in', '${bet.expirationDays}d'),
-                    _kvWhite('total duration', '${bet.expirationDays}d'),
                     _kvWhite('ends at', _endsAt),
                   ],
                 ),

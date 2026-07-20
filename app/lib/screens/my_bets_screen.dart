@@ -1,13 +1,18 @@
 // Meine Wetten (Katalog: `MyBetsScreen`).
 // Zeigt die platzierten Wetten mit Fortschritt. Über „record run" öffnet sich der
 // RECORDER: ein aufgenommener, qualifizierter Lauf schreibt eine Aktivität gut
-// (ersetzt den früheren „Aktivität simulieren"-Zähler) — die Wette macht
-// Fortschritt, bis sie geschafft ist.
+// — die Wette macht Fortschritt, bis sie geschafft ist.
+//
+// Konsistenz mit der Bets-Liste/Detailansicht (Roland-Wunsch 2026-07-20): jede
+// Kachel zeigt Sport-Icon (aus der Sportart), Bet-Tier, RESTLAUFZEIT („expires in")
+// und den ABGELEITETEN Wertzuwachs — dieselben Kennzahlen wie im Katalog.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../data/my_bets_store.dart';
+import '../models/bet.dart';
+import '../models/tiers.dart';
 import '../theme/app_theme.dart';
 import '../widgets/groove_divider.dart';
 import '../widgets/top_nav.dart';
@@ -67,9 +72,9 @@ class _EmptyState extends StatelessWidget {
           children: [
             Icon(Icons.flag_outlined, color: AppColors.textMuted, size: 40),
             SizedBox(height: 12),
-            Text('Noch keine Wetten platziert.', style: TextStyle(color: AppColors.textMuted, fontSize: 15)),
+            Text('No bets placed yet.', style: TextStyle(color: AppColors.textMuted, fontSize: 15)),
             SizedBox(height: 6),
-            Text('Über „create bet" eine Wette anlegen und platzieren.',
+            Text('Create and place a bet via "create bet".',
                 textAlign: TextAlign.center, style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
           ],
         ),
@@ -86,18 +91,19 @@ class _MyBetTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bet = placed.bet;
-    final weeks = (bet.expirationDays / 7).round();
     final done = placed.isComplete;
     final pct = (placed.progress * 100).round();
+    final increase = bet.economics.increasePctRounded;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Zeile 1: Sport-Icon + Name + Einsatz
           Row(
             children: [
-              SvgPicture.asset('assets/icons/Jogger-Icon.svg', height: 22),
+              SvgPicture.asset('assets/icons/${_sportAsset(bet.sport)}', height: 22),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(bet.name,
@@ -107,12 +113,37 @@ class _MyBetTile extends StatelessWidget {
                   style: const TextStyle(color: AppColors.price, fontSize: 15, fontWeight: FontWeight.w700)),
             ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
+          // Zeile 2: Sportart · Distanz · Häufigkeit + Bet-Tier-Chip
           Padding(
             padding: const EdgeInsets.only(left: 30),
-            child: Text(
-              '${bet.sport.label} · ${_fmtKm(bet.distanceKm)} km · ${bet.iterationsPerWeek}× week · $weeks weeks',
-              style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '${bet.sport.label} · ${_fmtKm(bet.distanceKm)} km · ${bet.iterationsPerWeek}×/week',
+                    style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                _tierChip(bet.tier),
+              ],
+            ),
+          ),
+          const SizedBox(height: 5),
+          // Zeile 3: RESTLAUFZEIT + Wertzuwachs (dieselben Kennzahlen wie im Katalog)
+          Padding(
+            padding: const EdgeInsets.only(left: 30),
+            child: Row(
+              children: [
+                const Icon(Icons.schedule, size: 13, color: AppColors.textMuted),
+                const SizedBox(width: 4),
+                Text('expires in ${bet.expirationDays}d',
+                    style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                const Spacer(),
+                Text('value ${increase >= 0 ? '+' : ''}$increase%',
+                    style: const TextStyle(color: AppColors.gain, fontSize: 12, fontWeight: FontWeight.w700)),
+              ],
             ),
           ),
           const SizedBox(height: 8),
@@ -123,7 +154,7 @@ class _MyBetTile extends StatelessWidget {
             child: Row(
               children: [
                 Expanded(
-                  child: Text('${placed.activitiesDone} / ${placed.totalActivities} Aktivitäten  ·  $pct%',
+                  child: Text('${placed.activitiesDone} / ${placed.totalActivities} activities  ·  $pct%',
                       style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
                 ),
                 if (done)
@@ -132,7 +163,7 @@ class _MyBetTile extends StatelessWidget {
                     children: [
                       Icon(Icons.check_circle, color: _green, size: 16),
                       SizedBox(width: 4),
-                      Text('geschafft', style: TextStyle(color: _green, fontSize: 13, fontWeight: FontWeight.w700)),
+                      Text('done', style: TextStyle(color: _green, fontSize: 13, fontWeight: FontWeight.w700)),
                     ],
                   )
                 else
@@ -145,8 +176,7 @@ class _MyBetTile extends StatelessWidget {
     );
   }
 
-  /// Fortschritt als PILLENRINNE: durchgehende, rund abgeschlossene Rinne (heller
-  /// Kanal), darin der gefuellte Anteil als Pille — der offene Rest bis 100 % bleibt sichtbar.
+  /// Fortschritt als PILLENRINNE: heller Kanal, darin der gefuellte Anteil als Pille.
   Widget _progressBar(double p, bool done) {
     const h = 8.0;
     return Container(
@@ -165,6 +195,19 @@ class _MyBetTile extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  /// Bet-Tier-Chip (Tier 1/2/3) — wie in der Bets-Liste.
+  Widget _tierChip(PotTier tier) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(3),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Text(tier.shortLabel,
+          style: const TextStyle(color: AppColors.textMuted, fontSize: 9, fontWeight: FontWeight.w600)),
     );
   }
 
@@ -191,6 +234,9 @@ class _MyBetTile extends StatelessWidget {
       ),
     );
   }
+
+  /// Sportart -> SVG-Asset (Icon-Policy: aus der Sportart abgeleitet, nie hart verdrahtet).
+  String _sportAsset(Sport s) => s == Sport.running ? 'Renner-Icon.svg' : 'Jogger-Icon.svg';
 
   String _fmtKm(double km) => km == km.roundToDouble() ? km.toStringAsFixed(0) : km.toString();
 }
