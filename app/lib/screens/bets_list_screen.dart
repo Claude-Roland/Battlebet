@@ -1,13 +1,13 @@
 // Bets-Liste (Katalog: `BetsListScreen`) — die Startseite des MVP.
 // Aufbau von oben nach unten:
 //   1) TopNav             -> feste Navigationsleiste
-//   2) FILTER-ZEILE       -> antippbar; oeffnet das WAEHLRAD (Distanz + Haeufigkeit).
-//                            Zeigt die aktive Vorauswahl; das Tune-Symbol signalisiert „tippbar".
+//   2) FILTER-ZEILE       -> antippbar; oeffnet das WAEHLRAD (Distanz + Einsatz + Haeufigkeit).
+//                            Zeigt kompakt die aktiven Filter; Tune-Symbol signalisiert „tippbar".
 //   3) SORTIER-KOPFZEILE  -> vier antippbare Schluessel: Neu | Distanz | Einsatz | Wertzuwachs.
 //   4) Liste der BetRow (erst GEFILTERT, dann SORTIERT), getrennt durch GrooveDivider.
 //
-// MVP: nur Joggen -> die Sportart ist fix „jogging"; das Waehlrad filtert Distanz
-// und Haeufigkeit. Der Sportart-Filter kommt, sobald es mehr als eine Sportart gibt.
+// MVP: nur Joggen -> die Sportart ist fix „jogging"; das Waehlrad filtert Distanz,
+// Einsatz und Haeufigkeit. Der Sportart-Filter kommt, sobald es mehr als eine gibt.
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -56,7 +56,9 @@ class _BetsListScreenState extends State<BetsListScreen> {
 
   // --- Filter (Waehlrad). 0 bzw. 1 bedeuten „alle". ---
   static const List<double> _distSteps = [0, 5, 7, 10, 15, 20, 50, 100, 200];
+  static const List<int> _stakeSteps = [0, 5, 10, 20, 30, 50, 80, 100]; // ganze Waehrungseinheiten
   double _minDist = 0; // ab X km
+  int _minStake = 0; // ab X € (Einsatz)
   int _minFreq = 1; // ab X ×/Woche
 
   void _onSort(BetSortKey key) {
@@ -83,10 +85,13 @@ class _BetsListScreenState extends State<BetsListScreen> {
     }
   }
 
-  /// Erst filtern (Distanz + Haeufigkeit), dann nach dem aktiven Schluessel sortieren.
+  /// Erst filtern (Distanz + Einsatz + Haeufigkeit), dann nach dem aktiven Schluessel sortieren.
   List<Bet> get _visibleBets {
     final list = sampleBets
-        .where((b) => b.distanceKm >= _minDist && b.iterationsPerWeek >= _minFreq)
+        .where((b) =>
+            b.distanceKm >= _minDist &&
+            b.stake.minor >= _minStake * 100 &&
+            b.iterationsPerWeek >= _minFreq)
         .toList();
     list.sort((a, b) => _desc ? _cmp(b, a) : _cmp(a, b));
     return list;
@@ -133,10 +138,14 @@ class _BetsListScreenState extends State<BetsListScreen> {
     );
   }
 
-  // 2) Filter-/Vorauswahl-Zeile — antippbar, oeffnet das Waehlrad.
+  // 2) Filter-/Vorauswahl-Zeile — antippbar, oeffnet das Waehlrad. Zeigt kompakt
+  //    nur die aktiven Filter (sonst „alle Wetten").
   Widget _filterRow() {
-    final dist = _minDist > 0 ? 'ab ${_fmtKm(_minDist)} km' : 'jede Distanz';
-    final freq = _minFreq > 1 ? 'ab $_minFreq×/Woche' : 'jede Häufigkeit';
+    final parts = <String>[];
+    if (_minDist > 0) parts.add('ab ${_fmtKm(_minDist)} km');
+    if (_minStake > 0) parts.add('ab $_minStake €');
+    if (_minFreq > 1) parts.add('ab $_minFreq×/W');
+    final txt = parts.isEmpty ? 'alle Wetten' : parts.join('  ·  ');
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: _openFilter,
@@ -149,7 +158,9 @@ class _BetsListScreenState extends State<BetsListScreen> {
                 style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
             const SizedBox(width: 12),
             Expanded(
-              child: Text('$dist  ·  $freq',
+              child: Text(txt,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(color: Colors.white.withValues(alpha: 0.92), fontSize: 13)),
             ),
             const Icon(Icons.tune, color: Colors.white, size: 19),
@@ -175,6 +186,7 @@ class _BetsListScreenState extends State<BetsListScreen> {
             GestureDetector(
               onTap: () => setState(() {
                 _minDist = 0;
+                _minStake = 0;
                 _minFreq = 1;
               }),
               child: Container(
@@ -193,14 +205,18 @@ class _BetsListScreenState extends State<BetsListScreen> {
     );
   }
 
-  // Das „geoeffnete Waehlrad": zwei Trommeln (Distanz, Haeufigkeit) im Bottom-Sheet.
+  // Das „geoeffnete Waehlrad": drei Trommeln (Distanz, Einsatz, Haeufigkeit).
   void _openFilter() {
-    final distItems = _distSteps.map((d) => d == 0 ? 'jede Distanz' : 'ab ${_fmtKm(d)} km').toList();
-    final freqItems = List.generate(7, (i) => i == 0 ? 'jede Häufigkeit' : 'ab ${i + 1}×/Woche');
+    final distItems = _distSteps.map((d) => d == 0 ? 'alle' : 'ab ${_fmtKm(d)} km').toList();
+    final stakeItems = _stakeSteps.map((s) => s == 0 ? 'alle' : 'ab $s €').toList();
+    final freqItems = List.generate(7, (i) => i == 0 ? 'alle' : 'ab ${i + 1}×/W');
     int distIdx = _distSteps.indexOf(_minDist);
     if (distIdx < 0) distIdx = 0;
+    int stakeIdx = _stakeSteps.indexOf(_minStake);
+    if (stakeIdx < 0) stakeIdx = 0;
     int freqIdx = (_minFreq - 1).clamp(0, 6);
     final distCtrl = FixedExtentScrollController(initialItem: distIdx);
+    final stakeCtrl = FixedExtentScrollController(initialItem: stakeIdx);
     final freqCtrl = FixedExtentScrollController(initialItem: freqIdx);
 
     showModalBottomSheet(
@@ -210,7 +226,7 @@ class _BetsListScreenState extends State<BetsListScreen> {
           borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
       builder: (ctx) => SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -222,8 +238,10 @@ class _BetsListScreenState extends State<BetsListScreen> {
                   GestureDetector(
                     onTap: () {
                       distIdx = 0;
+                      stakeIdx = 0;
                       freqIdx = 0;
                       distCtrl.jumpToItem(0);
+                      stakeCtrl.jumpToItem(0);
                       freqCtrl.jumpToItem(0);
                     },
                     child: const Text('zurücksetzen',
@@ -237,6 +255,7 @@ class _BetsListScreenState extends State<BetsListScreen> {
                 child: Row(
                   children: [
                     _filterWheel('ab Distanz', distItems, distCtrl, (i) => distIdx = i),
+                    _filterWheel('ab Einsatz', stakeItems, stakeCtrl, (i) => stakeIdx = i),
                     _filterWheel('ab Häufigkeit', freqItems, freqCtrl, (i) => freqIdx = i),
                   ],
                 ),
@@ -251,6 +270,7 @@ class _BetsListScreenState extends State<BetsListScreen> {
                   onPressed: () {
                     setState(() {
                       _minDist = _distSteps[distIdx];
+                      _minStake = _stakeSteps[stakeIdx];
                       _minFreq = freqIdx + 1;
                     });
                     Navigator.of(ctx).pop();
@@ -265,6 +285,7 @@ class _BetsListScreenState extends State<BetsListScreen> {
       ),
     ).whenComplete(() {
       distCtrl.dispose();
+      stakeCtrl.dispose();
       freqCtrl.dispose();
     });
   }
@@ -299,7 +320,7 @@ class _BetsListScreenState extends State<BetsListScreen> {
                   Center(
                     child: Text(it,
                         style: const TextStyle(
-                            color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.w600)),
+                            color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600)),
                   ),
               ],
             ),
