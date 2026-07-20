@@ -1,28 +1,37 @@
-// Die Bronze/Silber/Obsidian-Leiter — Vertrauensstufe des Nutzers UND Typ eines Pots.
-// (Zielarchitektur 8.4: gestufte Pots; hier als sichtbare, statusgebundene Leiter.)
+// Die Zugangs-/Vertrauens-Leiter — als BET TIER 1 / 2 / 3.
+// (Zielarchitektur 8.4 + Roland-Entscheidung 2026-07-20; Details: Memory „wett-oekonomie".)
 //
-// Grundregel (Roland 2026-07-20): Ein Nutzer darf einen Pot-Typ EROEFFNEN und ihm
-// BEITRETEN, wenn seine Vertrauensstufe >= der geforderten Stufe des Pots ist.
-// Was er (noch) nicht darf, wird ausgegraut sichtbar gemacht — als Anreiz.
+// NAMENS-ENTSCHEIDUNG (Roland 2026-07-20): Die Leiter heisst nach aussen
+// „Bet Tier 1/2/3" — bewusst NUMMERISCH, damit sie NICHT mit den sportlichen
+// Metall-/Edelstein-Stufen (SOCKS/Batches: Gold, tin/gold/sapphire) verwechselt
+// wird. Die Enum-Bezeichner heissen aus historischen Gruenden noch bronze/silber/
+// obsidian bzw. limited/limitedLarge/unlimited (limited beschreibt den Deckel und
+// kollidiert mit nichts). Der Nutzer sieht ausschliesslich die `label`-Texte
+// „Bet Tier N". Metall-/Edelstein-Namen sind ab jetzt allein den sportlichen
+// Belohnungen vorbehalten.
 //
-//   Pot-Typ            braucht Stufe   Deckel          Zugang
-//   Limited            Bronze          fest (z.B. 500) alle
-//   Limited large      Silber          fest (z.B.2000) Silber + Obsidian
-//   Unlimited          Obsidian        KEINER          nur Obsidian
+// Grundregel: Ein Nutzer darf einen Pot-Typ EROEFFNEN und ihm BEITRETEN, wenn seine
+// Stufe >= der geforderten Stufe des Pots ist. Gesperrtes wird ausgegraut gezeigt.
 //
-// Die eigentliche staerkere Pruefung je Stufe + das echte VERDIENEN von Silber/
-// Obsidian kommen mit dem Server; heute ist der Status simuliert (siehe user_session).
+//   Pot-Typ        braucht Stufe   Deckel            Zugang
+//   Bet Tier 1       Tier 1         fest (500)        alle
+//   Bet Tier 2       Tier 2         fest (2000)       ab Tier 2
+//   Bet Tier 3       Tier 3         KEINER (offen)    ab Tier 3
+//
+// Das echte VERDIENEN der Stufen + die staerkere Pruefung je Stufe kommen mit dem
+// Server; heute ist der Status simuliert (siehe user_session).
 
 import 'money.dart';
 
-/// Vertrauensstufe eines Nutzers. Reihenfolge = Rang (bronze < silber < obsidian).
+/// Vertrauens-/Zugangsstufe eines Nutzers. Reihenfolge = Rang (1 < 2 < 3).
+/// (Enum-Namen historisch; Anzeige = „Bet Tier 1/2/3".)
 enum UserTier { bronze, silber, obsidian }
 
 extension UserTierX on UserTier {
   String get label => switch (this) {
-        UserTier.bronze => 'Bronze',
-        UserTier.silber => 'Silber',
-        UserTier.obsidian => 'Obsidian',
+        UserTier.bronze => 'Bet Tier 1',
+        UserTier.silber => 'Bet Tier 2',
+        UserTier.obsidian => 'Bet Tier 3',
       };
   int get rank => index;
 
@@ -34,7 +43,7 @@ extension UserTierX on UserTier {
       };
 }
 
-/// Typ eines Pots = Groesse + Zugang. Deckt sich mit der Vertrauens-Leiter.
+/// Typ eines Pots = Groesse + Zugang. Deckt sich mit der Bet-Tier-Leiter.
 enum PotTier { limited, limitedLarge, unlimited }
 
 extension PotTierX on PotTier {
@@ -54,25 +63,25 @@ extension PotTierX on PotTier {
         PotTier.unlimited => null,
       };
 
-  /// Anzeigename mit Zahl (Roland: „Limited 500" gibt ein Gefuehl fuer die Topfgroesse).
+  /// Anzeigename: Bet-Tier-Nummer + Deckel-Gefuehl.
   String get label => switch (this) {
-        PotTier.limited => 'Limited 500',
-        PotTier.limitedLarge => 'Limited large 2000',
-        PotTier.unlimited => 'Unlimited',
+        PotTier.limited => 'Bet Tier 1 · Limited 500',
+        PotTier.limitedLarge => 'Bet Tier 2 · Limited 2000',
+        PotTier.unlimited => 'Bet Tier 3 · offen',
       };
 
-  /// Kurzform ohne Zahl (fuer enge Stellen wie die Listen-Zeile).
+  /// Kurzform fuer enge Stellen (Listen-Zeile).
   String get shortLabel => switch (this) {
-        PotTier.limited => 'Limited',
-        PotTier.limitedLarge => 'Limited large',
-        PotTier.unlimited => 'Unlimited',
+        PotTier.limited => 'Tier 1',
+        PotTier.limitedLarge => 'Tier 2',
+        PotTier.unlimited => 'Tier 3',
       };
 
   /// Kurz-Zugangshinweis fuer die Legende.
   String get accessNote => switch (this) {
         PotTier.limited => 'offen für alle',
-        PotTier.limitedLarge => 'ab Silber',
-        PotTier.unlimited => 'nur Obsidian',
+        PotTier.limitedLarge => 'ab Bet Tier 2',
+        PotTier.unlimited => 'ab Bet Tier 3',
       };
 
   /// Der Deckel als Money in der gewuenschten Waehrung; null bei unbegrenzt.

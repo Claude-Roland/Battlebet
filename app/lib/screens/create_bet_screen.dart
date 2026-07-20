@@ -85,7 +85,7 @@ class _CreateBetScreenState extends State<CreateBetScreen> {
 
   /// Info zum gewaehlten Pot-Typ (Deckel + max. Teilnehmer, oder „kein Limit").
   String get _potInfoLine => _tier.isUnlimited
-      ? 'Unlimited · kein Teilnehmer-Limit'
+      ? 'Bet Tier 3 · kein Teilnehmer-Limit'
       : 'pot up to ${_tier.capIn(_currency)!.format()}  ·  max $_maxRunners runners';
 
   @override
