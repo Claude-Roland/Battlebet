@@ -1,8 +1,7 @@
 // Onboarding: Anmeldung/Registrierung (Katalog: `AuthScreen`).
 // Einstieg der App. Nutzer meldet sich an ODER registriert sich mit Username +
 // Passwort. MVP: rein lokal (kein Backend) über `authStore`. Nach Erfolg geht
-// es weiter in die Bets-Liste. Das Passwortfeld ist verdeckt; ein Auge-Knopf
-// blendet es zum Prüfen ein.
+// es weiter in die Bets-Liste. UI-Sprache: Englisch als Basis (Roland 2026-07-20).
 
 import 'package:flutter/material.dart';
 
@@ -76,14 +75,14 @@ class _AuthScreenState extends State<AuthScreen> {
                     _Field(
                       label: 'Username',
                       controller: _userCtrl,
-                      hint: 'dein Username',
+                      hint: 'your username',
                       textInputAction: TextInputAction.next,
                     ),
                     const SizedBox(height: 16),
                     _Field(
-                      label: 'Passwort',
+                      label: 'Password',
                       controller: _passCtrl,
-                      hint: 'dein Passwort',
+                      hint: 'your password',
                       obscure: _obscure,
                       textInputAction: TextInputAction.done,
                       onSubmitted: (_) => _submit(),
@@ -121,13 +120,13 @@ class _AuthScreenState extends State<AuthScreen> {
                           textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                         ),
                         onPressed: _submit,
-                        child: Text(_register ? 'Konto erstellen' : 'Anmelden'),
+                        child: Text(_register ? 'Create account' : 'Log in'),
                       ),
                     ),
                     const SizedBox(height: 16),
                     Center(
                       child: Text(
-                        _register ? 'Schon ein Konto? Oben auf „Anmelden".' : 'Neu hier? Oben auf „Registrieren".',
+                        _register ? 'Already have an account? Tap "Log in" above.' : 'New here? Tap "Register" above.',
                         style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
                       ),
                     ),
@@ -175,7 +174,7 @@ class _Wordmark extends StatelessWidget {
   }
 }
 
-/// Segmentierter Umschalter „Anmelden | Registrieren".
+/// Segmentierter Umschalter „Log in | Register".
 class _ModeToggle extends StatelessWidget {
   const _ModeToggle({required this.register, required this.onChanged});
 
@@ -192,8 +191,8 @@ class _ModeToggle extends StatelessWidget {
       ),
       child: Row(
         children: [
-          _seg('Anmelden', !register, () => onChanged(false)),
-          _seg('Registrieren', register, () => onChanged(true)),
+          _seg('Log in', !register, () => onChanged(false)),
+          _seg('Register', register, () => onChanged(true)),
         ],
       ),
     );

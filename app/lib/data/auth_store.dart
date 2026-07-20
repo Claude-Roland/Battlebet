@@ -14,8 +14,8 @@ class AuthStore extends ChangeNotifier {
   /// Registriert einen neuen Nutzer. Rückgabe: Fehlermeldung oder null bei Erfolg.
   String? register(String username, String password) {
     final u = username.trim();
-    if (u.isEmpty || password.isEmpty) return 'Bitte Username und Passwort eingeben.';
-    if (_users.containsKey(u)) return 'Dieser Username ist schon vergeben.';
+    if (u.isEmpty || password.isEmpty) return 'Please enter username and password.';
+    if (_users.containsKey(u)) return 'This username is already taken.';
     _users[u] = password;
     _currentUser = u;
     notifyListeners();
@@ -25,9 +25,9 @@ class AuthStore extends ChangeNotifier {
   /// Meldet einen Nutzer an. Rückgabe: Fehlermeldung oder null bei Erfolg.
   String? login(String username, String password) {
     final u = username.trim();
-    if (u.isEmpty || password.isEmpty) return 'Bitte Username und Passwort eingeben.';
-    if (!_users.containsKey(u)) return 'Kein Konto mit diesem Username.';
-    if (_users[u] != password) return 'Passwort stimmt nicht.';
+    if (u.isEmpty || password.isEmpty) return 'Please enter username and password.';
+    if (!_users.containsKey(u)) return 'No account with this username.';
+    if (_users[u] != password) return 'Wrong password.';
     _currentUser = u;
     notifyListeners();
     return null;

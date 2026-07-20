@@ -1,11 +1,12 @@
 // Profil-Seite (Katalog: `ProfileScreen`) — die Gambler-/Konto-Seite.
-// Aufbau (Design-Vorlage Durchlauf 4, aber „Claudes Weg" — eigene, klare Optik):
+// UI-Sprache: Englisch als Basis (Roland-Entscheidung 2026-07-20).
+// Aufbau (Design-Vorlage Durchlauf 4, aber „Claudes Weg"):
 //   1) Profil-Kopf: Avatar + Anzeigename (editierbar) + Bet-Tier.
-//   2) GUTHABEN (wichtigster Teil): Betrag gross + einzahlen/auszahlen. HEUTE
-//      SIMULIERT — echtes Geld kommt mit dem Server.
-//   3) Erfolge: aus den platzierten Wetten abgeleitet (platziert/laufend/geschafft).
-//   4) Auszeichnungen (Socken/Abzeichen/Raenge): Samen, ausgegraut als Anreiz (kommt spaeter).
-//   5) Abmelden.
+//   2) BALANCE (wichtigster Teil): Betrag + deposit/withdraw. SIMULIERT.
+//   3) Achievements: aus den platzierten Wetten abgeleitet.
+//   4) Awards (Socks/Badges/Ranks): Samen, ausgegraut als Anreiz.
+//   5) Language: English aktiv, Deutsch als „soon"-Samen (kommt mit dem l10n-System).
+//   6) Log out.
 // Erreichbar ueber das Personen-Symbol rechts in der TopNav.
 
 import 'package:flutter/cupertino.dart';
@@ -58,6 +59,8 @@ class ProfileScreen extends StatelessWidget {
                     _achievements(),
                     const SizedBox(height: 14),
                     _awardsSeed(),
+                    const SizedBox(height: 14),
+                    _language(context),
                     const SizedBox(height: 22),
                     _logout(context),
                   ],
@@ -72,7 +75,7 @@ class ProfileScreen extends StatelessWidget {
 
   // 1) Profil-Kopf: Avatar + Name (editierbar) + Bet-Tier.
   Widget _header(BuildContext context) {
-    final login = authStore.currentUser ?? 'Gast';
+    final login = authStore.currentUser ?? 'Guest';
     final name = profileStore.displayName(login);
     final initial = name.isNotEmpty ? name.substring(0, 1).toUpperCase() : '?';
     return _card(
@@ -131,26 +134,26 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  // 2) Guthaben — der wichtigste Teil: Betrag + einzahlen/auszahlen.
+  // 2) Balance — der wichtigste Teil: Betrag + deposit/withdraw.
   Widget _wallet(BuildContext context) {
     return _card(
       Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('Guthaben',
+          const Text('Balance',
               style: TextStyle(color: AppColors.orange, fontSize: 14, fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
           Text(profileStore.balance.format(),
               style: const TextStyle(color: AppColors.textPrimary, fontSize: 34, fontWeight: FontWeight.w800)),
           const SizedBox(height: 2),
-          const Text('simuliert · echtes Geld kommt mit dem Server',
+          const Text('simulated · real money comes with the server',
               style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
           const SizedBox(height: 14),
           Row(
             children: [
-              Expanded(child: _walletButton('einzahlen', Icons.add, true, () => _amountSheet(context, deposit: true))),
+              Expanded(child: _walletButton('deposit', Icons.add, true, () => _amountSheet(context, deposit: true))),
               const SizedBox(width: 12),
-              Expanded(child: _walletButton('auszahlen', Icons.remove, false, () => _amountSheet(context, deposit: false))),
+              Expanded(child: _walletButton('withdraw', Icons.remove, false, () => _amountSheet(context, deposit: false))),
             ],
           ),
         ],
@@ -176,27 +179,27 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  // 3) Erfolge: aus den platzierten Wetten abgeleitet.
+  // 3) Achievements: aus den platzierten Wetten abgeleitet.
   Widget _achievements() {
     final bets = myBetsStore.bets;
     final done = bets.where((b) => b.isComplete).length;
-    final running = bets.length - done;
+    final active = bets.length - done;
     return _card(
       Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Erfolge',
+          const Text('Achievements',
               style: TextStyle(color: AppColors.orange, fontSize: 14, fontWeight: FontWeight.w700)),
           const SizedBox(height: 10),
           if (bets.isEmpty)
-            const Text('Noch keine Wetten — leg los, deine Erfolge sammeln sich hier.',
+            const Text('No bets yet — get started and your achievements collect here.',
                 style: TextStyle(color: AppColors.textMuted, fontSize: 13))
           else
             Row(
               children: [
-                Expanded(child: _stat('${bets.length}', 'platziert')),
-                Expanded(child: _stat('$running', 'laufend')),
-                Expanded(child: _stat('$done', 'geschafft')),
+                Expanded(child: _stat('${bets.length}', 'placed')),
+                Expanded(child: _stat('$active', 'active')),
+                Expanded(child: _stat('$done', 'done')),
               ],
             ),
         ],
@@ -214,20 +217,20 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  // 4) Samen: Socken / Abzeichen / Raenge — kommen spaeter, ausgegraut als Anreiz.
+  // 4) Samen: Socks / Badges / Ranks — kommen spaeter, ausgegraut als Anreiz.
   Widget _awardsSeed() {
     return _card(
       Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Auszeichnungen',
+          const Text('Awards',
               style: TextStyle(color: AppColors.orange, fontSize: 14, fontWeight: FontWeight.w700)),
           const SizedBox(height: 10),
           Row(
             children: [
-              Expanded(child: _seed(Icons.emoji_events_outlined, 'Socken')),
-              Expanded(child: _seed(Icons.workspace_premium_outlined, 'Abzeichen')),
-              Expanded(child: _seed(Icons.military_tech_outlined, 'Ränge')),
+              Expanded(child: _seed(Icons.emoji_events_outlined, 'Socks')),
+              Expanded(child: _seed(Icons.workspace_premium_outlined, 'Badges')),
+              Expanded(child: _seed(Icons.military_tech_outlined, 'Ranks')),
             ],
           ),
         ],
@@ -244,8 +247,58 @@ class ProfileScreen extends StatelessWidget {
           const SizedBox(height: 4),
           Text(label, style: const TextStyle(color: AppColors.textMuted, fontSize: 12, fontWeight: FontWeight.w600)),
           const SizedBox(height: 2),
-          const Text('bald', style: TextStyle(color: AppColors.textMuted, fontSize: 10)),
+          const Text('soon', style: TextStyle(color: AppColors.textMuted, fontSize: 10)),
         ],
+      ),
+    );
+  }
+
+  // 5) Language — English aktiv; Deutsch als „soon"-Samen (kommt mit dem l10n-System).
+  Widget _language(BuildContext context) {
+    return _card(
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Language',
+              style: TextStyle(color: AppColors.orange, fontSize: 14, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(child: _langPill('English', active: true, soon: false, onTap: null)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _langPill('Deutsch', active: false, soon: true, onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('German arrives with the full translation.')),
+                  );
+                }),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _langPill(String label, {required bool active, required bool soon, VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Opacity(
+        opacity: soon ? 0.5 : 1.0,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 11),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: active ? AppColors.orange.withValues(alpha: 0.16) : AppColors.surface,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: active ? AppColors.orange : AppColors.divider),
+          ),
+          child: Text(soon ? '$label · soon' : label,
+              style: TextStyle(
+                  color: active ? AppColors.textPrimary : AppColors.textMuted,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700)),
+        ),
       ),
     );
   }
@@ -266,7 +319,7 @@ class ProfileScreen extends StatelessWidget {
           );
         },
         icon: const Icon(Icons.logout, size: 18, color: AppColors.textMuted),
-        label: const Text('abmelden',
+        label: const Text('log out',
             style: TextStyle(color: AppColors.textMuted, fontSize: 15, fontWeight: FontWeight.w600)),
       ),
     );
@@ -287,7 +340,7 @@ class ProfileScreen extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
-        title: const Text('Anzeigename', style: TextStyle(color: AppColors.textPrimary)),
+        title: const Text('Display name', style: TextStyle(color: AppColors.textPrimary)),
         content: TextField(
           controller: ctrl,
           autofocus: true,
@@ -302,7 +355,7 @@ class ProfileScreen extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('abbrechen', style: TextStyle(color: AppColors.textMuted)),
+            child: const Text('cancel', style: TextStyle(color: AppColors.textMuted)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.orange, shape: const StadiumBorder()),
@@ -310,7 +363,7 @@ class ProfileScreen extends StatelessWidget {
               profileStore.setName(ctrl.text);
               Navigator.of(ctx).pop();
             },
-            child: const Text('speichern', style: TextStyle(color: Colors.white)),
+            child: const Text('save', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -331,7 +384,7 @@ class ProfileScreen extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(deposit ? 'einzahlen' : 'auszahlen',
+              Text(deposit ? 'deposit' : 'withdraw',
                   style: const TextStyle(color: AppColors.orange, fontSize: 16, fontWeight: FontWeight.w700)),
               const SizedBox(height: 6),
               SizedBox(
@@ -374,7 +427,7 @@ class ProfileScreen extends StatelessWidget {
                     }
                     Navigator.of(ctx).pop();
                   },
-                  child: const Text('bestätigen',
+                  child: const Text('confirm',
                       style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
                 ),
               ),

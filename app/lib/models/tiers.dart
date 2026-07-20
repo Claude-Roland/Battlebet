@@ -3,28 +3,17 @@
 //
 // NAMENS-ENTSCHEIDUNG (Roland 2026-07-20): Die Leiter heisst nach aussen
 // „Bet Tier 1/2/3" — bewusst NUMMERISCH, damit sie NICHT mit den sportlichen
-// Metall-/Edelstein-Stufen (SOCKS/Batches: Gold, tin/gold/sapphire) verwechselt
-// wird. Die Enum-Bezeichner heissen aus historischen Gruenden noch bronze/silber/
-// obsidian bzw. limited/limitedLarge/unlimited (limited beschreibt den Deckel und
-// kollidiert mit nichts). Der Nutzer sieht ausschliesslich die `label`-Texte
-// „Bet Tier N". Metall-/Edelstein-Namen sind ab jetzt allein den sportlichen
-// Belohnungen vorbehalten.
+// Metall-/Edelstein-Stufen (SOCKS/Batches) verwechselt wird. Die Enum-Bezeichner
+// heissen aus historischen Gruenden noch bronze/silber/obsidian bzw. limited/
+// limitedLarge/unlimited. Der Nutzer sieht ausschliesslich die `label`-Texte.
 //
 // Grundregel: Ein Nutzer darf einen Pot-Typ EROEFFNEN und ihm BEITRETEN, wenn seine
 // Stufe >= der geforderten Stufe des Pots ist. Gesperrtes wird ausgegraut gezeigt.
-//
-//   Pot-Typ        braucht Stufe   Deckel            Zugang
-//   Bet Tier 1       Tier 1         fest (500)        alle
-//   Bet Tier 2       Tier 2         fest (2000)       ab Tier 2
-//   Bet Tier 3       Tier 3         KEINER (offen)    ab Tier 3
-//
-// Das echte VERDIENEN der Stufen + die staerkere Pruefung je Stufe kommen mit dem
-// Server; heute ist der Status simuliert (siehe user_session).
+// (UI-Sprache: Englisch als Basis — Roland-Entscheidung 2026-07-20.)
 
 import 'money.dart';
 
 /// Vertrauens-/Zugangsstufe eines Nutzers. Reihenfolge = Rang (1 < 2 < 3).
-/// (Enum-Namen historisch; Anzeige = „Bet Tier 1/2/3".)
 enum UserTier { bronze, silber, obsidian }
 
 extension UserTierX on UserTier {
@@ -63,11 +52,11 @@ extension PotTierX on PotTier {
         PotTier.unlimited => null,
       };
 
-  /// Anzeigename: Bet-Tier-Nummer + Deckel-Gefuehl.
+  /// Anzeigename: Bet-Tier-Nummer + Deckel-Gefuehl (EN-Basis).
   String get label => switch (this) {
         PotTier.limited => 'Bet Tier 1 · Limited 500',
         PotTier.limitedLarge => 'Bet Tier 2 · Limited 2000',
-        PotTier.unlimited => 'Bet Tier 3 · offen',
+        PotTier.unlimited => 'Bet Tier 3 · open',
       };
 
   /// Kurzform fuer enge Stellen (Listen-Zeile).
@@ -77,11 +66,11 @@ extension PotTierX on PotTier {
         PotTier.unlimited => 'Tier 3',
       };
 
-  /// Kurz-Zugangshinweis fuer die Legende.
+  /// Kurz-Zugangshinweis fuer die Legende (EN-Basis).
   String get accessNote => switch (this) {
-        PotTier.limited => 'offen für alle',
-        PotTier.limitedLarge => 'ab Bet Tier 2',
-        PotTier.unlimited => 'ab Bet Tier 3',
+        PotTier.limited => 'open to all',
+        PotTier.limitedLarge => 'from Bet Tier 2',
+        PotTier.unlimited => 'from Bet Tier 3',
       };
 
   /// Der Deckel als Money in der gewuenschten Waehrung; null bei unbegrenzt.
