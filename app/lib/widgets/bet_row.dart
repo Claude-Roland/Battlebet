@@ -82,9 +82,10 @@ class BetRow extends StatelessWidget {
               _col('${_fmtKm(bet.distanceKm)}km', flexDistance, bold: true),
               _col('${bet.iterationsPerWeek} x w', flexInterval, color: AppColors.textMuted),
               _col('${bet.expirationDays}d', flexExpiration),
-              _col('${bet.entryPrice.toStringAsFixed(2)}\$', flexPrice,
+              // Einsatz (Money) und der ABGELEITETE "increase" aus der Pot-Oekonomie.
+              _col(bet.stake.format(), flexPrice,
                   color: AppColors.price, bold: true, align: TextAlign.right),
-              _col('${bet.increaseInValuePct}%', flexIncrease,
+              _col('${bet.economics.increasePctRounded}%', flexIncrease,
                   color: AppColors.gain, align: TextAlign.right),
               const SizedBox(width: bookmarkColWidth),
             ],

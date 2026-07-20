@@ -5,18 +5,19 @@
 //                    total duration / ends at
 //   Body: next bet check, activities before check, interval, distance,
 //         "bet data"-Kurve, participants/starters/dropouts,
-//         increase in value, total price, payout, und der grosse "bet"-Button.
+//         increase in value, stake, fee, payout, pot cap, und der "bet"-Knopf.
 // Gamification (socks/batches) ist im MVP bewusst weggelassen.
 //
-// HINWEIS: Solange es noch kein Backend / keine echte Wett-Oekonomie gibt,
-// werden pot/participants/payout/Kurve unten aus den Listen-Feldern der Wette
-// BERECHNET (Platzhalter-Logik, klar gekennzeichnet).
+// Die Pot-Zahlen (pot, payout, increase, Deckel) sind KEINE Platzhalter mehr:
+// sie werden von `BetEconomics` aus den echten Vertragsfeldern der Wette
+// gerechnet (Einsatz, Topf-Deckel, Fee, Starter, Aussteiger). Geld ist `Money`.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../data/my_bets_store.dart';
 import '../models/bet.dart';
+import '../models/bet_economics.dart';
 import '../theme/app_theme.dart';
 import '../widgets/digital_countdown.dart';
 import '../widgets/groove_divider.dart';
@@ -31,16 +32,13 @@ class BetDetailScreen extends StatelessWidget {
 
   final Bet bet;
 
-  // --- Abgeleitete Anzeige-Werte (Platzhalter bis zur echten Oekonomie) ---
-  int get _participants => 100 + (bet.increaseInValuePct.clamp(0, 4000) ~/ 4);
-  int get _dropouts => _participants ~/ 8;
-  double get _pot => bet.entryPrice * _participants;
-  double get _payout => bet.entryPrice * (1 + bet.increaseInValuePct / 100);
+  /// Die gerechnete Pot-Oekonomie dieser Wette (Single Source der Anzeige-Zahlen).
+  BetEconomics get _eco => bet.economics;
 
-  /// Sanft steigende, leicht gezackte Kurve; Endwert ~ Wertsteigerung.
+  /// Kurve fuer "bet data": steigt sanft bis zur aktuellen Wertsteigerung.
   List<double> get _valueHistory {
     const n = 16;
-    final end = 1 + bet.increaseInValuePct / 100;
+    final end = 1 + _eco.increasePct / 100;
     return List.generate(n, (i) {
       final t = i / (n - 1);
       final zig = (i.isEven) ? 0.04 : -0.03;
@@ -106,7 +104,8 @@ class BetDetailScreen extends StatelessWidget {
               Expanded(
                 child: Column(
                   children: [
-                    _kvWhite('pot', _money(_pot), big: true),
+                    // Aktueller Topf (Einsatz × Starter).
+                    _kvWhite('pot', _eco.pot.format(), big: true),
                     _kvWhite('expires in', '${bet.expirationDays}d'),
                     _kvWhite('total duration', '${bet.expirationDays}d'),
                     _kvWhite('ends at', _endsAt),
@@ -122,6 +121,10 @@ class BetDetailScreen extends StatelessWidget {
 
   // ---- Body (dunkel) ----
   Widget _body(BuildContext context) {
+    final feePct = (bet.feeBps / 100).toStringAsFixed(bet.feeBps % 100 == 0 ? 0 : 1);
+    final active = bet.starters - bet.dropouts;
+    final increaseColor = _eco.increasePctRounded >= 0 ? AppColors.gain : AppColors.textMuted;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
       child: Column(
@@ -149,27 +152,35 @@ class BetDetailScreen extends StatelessWidget {
           const SizedBox(height: 8),
           ValueChart(data: _valueHistory),
           const SizedBox(height: 10),
+          // participants = aktuell noch dabei; starters = alle, die eingezahlt haben;
+          // dropouts = ausgestiegen (Einsatz bleibt im Topf).
           Row(
             children: [
-              _miniStat('participants', '$_participants'),
-              _miniStat('starters', '${_participants + _dropouts}'),
-              _miniStat('dropouts', '$_dropouts'),
+              _miniStat('participants', '$active'),
+              _miniStat('starters', '${bet.starters}'),
+              _miniStat('dropouts', '${bet.dropouts}'),
             ],
           ),
           const GrooveDivider(),
-          _kv('increase in value', '${bet.increaseInValuePct}%', valueColor: AppColors.gain, valueBig: true),
-          _kv('total price', _money(bet.entryPrice)),
-          _kv('payout', _money(_payout), valueColor: AppColors.price, valueBig: true),
+          // --- Echte Pot-Oekonomie ---
+          _kv('increase in value', '${_eco.increasePctRounded}%', valueColor: increaseColor, valueBig: true),
+          _kv('stake', bet.stake.format()),
+          _kv('platform fee ($feePct%)', '- ${_eco.fee.format()}'),
+          _kv('payout', _eco.payoutPerFinisher.format(), valueColor: AppColors.price, valueBig: true),
+          _kv('pot cap', '${bet.potCap.format()}  ·  max ${_eco.maxStarters}'),
+          // Pruefprofil ist vor dem Beitritt sichtbar (Zielarchitektur 8.1.3);
+          // heute immer "standard" — Samen fuer die spaetere Bronze/Silber/Obsidian-Leiter.
+          _kv('check profile', bet.checkProfile.name),
           const SizedBox(height: 18),
-          // Call to Action: der grosse "bet"-Knopf.
-          //  - noch nicht beigetreten -> oranger "bet"-Knopf, oeffnet die Bestaetigung.
-          //  - schon beigetreten      -> gesperrter, gruen markierter "placed"-Knopf,
-          //                              der zu "My Bets" fuehrt (kein Doppel-Beitritt).
-          // Reagiert auf myBetsStore, damit beim erneuten Oeffnen der Zustand stimmt.
+          // Call to Action: der grosse "bet"-Knopf. Drei Zustaende, reagieren auf den Store:
+          //   schon beigetreten -> gesperrt "placed" (fuehrt zu My Bets)
+          //   Topf voll          -> gesperrt "pot full" (kein heimliches Aufsteigen)
+          //   sonst              -> oranger "bet"-Knopf (oeffnet Bestaetigung)
           AnimatedBuilder(
             animation: myBetsStore,
             builder: (context, _) {
               final joined = myBetsStore.hasJoined(bet);
+              final full = bet.economics.isFull;
               return SizedBox(
                 height: 52,
                 child: joined
@@ -186,13 +197,25 @@ class BetDetailScreen extends StatelessWidget {
                         label: const Text('placed · view in My Bets',
                             style: TextStyle(color: _joinedGreen, fontSize: 15, fontWeight: FontWeight.w700)),
                       )
-                    : ElevatedButton(
-                        style:
-                            ElevatedButton.styleFrom(backgroundColor: AppColors.orange, shape: const StadiumBorder()),
-                        onPressed: () => _confirmJoin(context),
-                        child: const Text('bet',
-                            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
-                      ),
+                    : full
+                        ? ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.surface,
+                              shape: const StadiumBorder(),
+                              disabledBackgroundColor: AppColors.surface,
+                            ),
+                            onPressed: null,
+                            icon: const Icon(Icons.lock_outline, color: AppColors.textMuted, size: 18),
+                            label: const Text('pot full · closed',
+                                style: TextStyle(color: AppColors.textMuted, fontSize: 15, fontWeight: FontWeight.w700)),
+                          )
+                        : ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.orange, shape: const StadiumBorder()),
+                            onPressed: () => _confirmJoin(context),
+                            child: const Text('bet',
+                                style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
+                          ),
               );
             },
           ),
@@ -219,7 +242,7 @@ class BetDetailScreen extends StatelessWidget {
             Text('You are about to join "${bet.name}".',
                 style: const TextStyle(color: AppColors.textMuted, fontSize: 14)),
             const SizedBox(height: 14),
-            _confirmRow('stake', _money(bet.entryPrice), valueColor: AppColors.price),
+            _confirmRow('stake', bet.stake.format(), valueColor: AppColors.price),
             const SizedBox(height: 6),
             _confirmRow('goal', '${_fmtKm(bet.distanceKm)} km · ${bet.iterationsPerWeek}× a week · $weeks weeks'),
           ],
@@ -310,19 +333,6 @@ class BetDetailScreen extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  /// Geldbetrag mit Tausender-Trennung und 2 Nachkommastellen, Suffix "$".
-  String _money(double v) {
-    final s = v.toStringAsFixed(2);
-    final parts = s.split('.');
-    final intPart = parts[0];
-    final buf = StringBuffer();
-    for (int i = 0; i < intPart.length; i++) {
-      if (i > 0 && (intPart.length - i) % 3 == 0) buf.write(',');
-      buf.write(intPart[i]);
-    }
-    return '${buf.toString()}.${parts[1]}\$';
   }
 
   String _fmtKm(double km) => km == km.roundToDouble() ? km.toStringAsFixed(0) : km.toString();

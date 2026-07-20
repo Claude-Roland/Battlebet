@@ -1,7 +1,9 @@
 // Wette anlegen (Katalog: `CreateBetScreen`).
-// Wählwalzen (WheelPicker) für Distanz, Häufigkeit/Woche, Dauer (Wochen) und
-// Entry Price; aus der Auswahl wird live der Wett-Satz erzeugt.
-// MVP: Sportart fest = jogging; "place bet" noch nicht verdrahtet.
+// Wählwalzen (WheelPicker) für Distanz, Häufigkeit/Woche, Dauer (Wochen),
+// Einsatz und Topf-Deckel; aus der Auswahl wird live der Wett-Satz erzeugt.
+// Der Ersteller legt die Topf-Höhe fest; daraus ergibt sich automatisch die
+// maximale Teilnehmerzahl (Topf ÷ Einsatz). Geld läuft über den Money-Typ (EUR).
+// MVP: Sportart fest = jogging.
 //
 // Bewusste Design-Entscheidung: klare, konsistente Optik (CupertinoPicker mit
 // dezentem Auswahlband) — NICHT die metallische Original-Trommel nachgebaut.
@@ -12,6 +14,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../data/my_bets_store.dart';
 import '../models/bet.dart';
+import '../models/money.dart';
 import '../theme/app_theme.dart';
 import '../widgets/top_nav.dart';
 import 'my_bets_screen.dart';
@@ -24,20 +27,26 @@ class CreateBetScreen extends StatefulWidget {
 }
 
 class _CreateBetScreenState extends State<CreateBetScreen> {
+  // Alle Wetten hier laufen in EUR (Money-Typ traegt die Waehrung mit).
+  static const _currency = 'EUR';
+
   final List<double> _distances = [for (int i = 0; i <= 54; i++) 3 + i * 0.5]; // 3.0 .. 30.0 km
   final List<int> _freqs = [for (int i = 1; i <= 7; i++) i]; // 1 .. 7 x/Woche
   final List<int> _weeks = [for (int i = 1; i <= 52; i++) i]; // 1 .. 52 Wochen
-  final List<int> _prices = [for (int i = 1; i <= 100; i++) i]; // 1 .. 100 $
+  final List<int> _prices = [for (int i = 1; i <= 100; i++) i]; // 1 .. 100 € Einsatz
+  final List<int> _potCaps = [100, 250, 500, 1000, 2500, 5000]; // Topf-Deckel in €
 
   int _iDist = 9; // 7.5 km
   int _iFreq = 4; // 5 x week
   int _iWeek = 7; // 8 weeks
-  int _iPrice = 19; // 20 $
+  int _iPrice = 19; // 20 €
+  int _iPotCap = 3; // 1000 €
 
   late final _distCtrl = FixedExtentScrollController(initialItem: _iDist);
   late final _freqCtrl = FixedExtentScrollController(initialItem: _iFreq);
   late final _weekCtrl = FixedExtentScrollController(initialItem: _iWeek);
   late final _priceCtrl = FixedExtentScrollController(initialItem: _iPrice);
+  late final _potCapCtrl = FixedExtentScrollController(initialItem: _iPotCap);
 
   @override
   void dispose() {
@@ -45,6 +54,7 @@ class _CreateBetScreenState extends State<CreateBetScreen> {
     _freqCtrl.dispose();
     _weekCtrl.dispose();
     _priceCtrl.dispose();
+    _potCapCtrl.dispose();
     super.dispose();
   }
 
@@ -52,11 +62,18 @@ class _CreateBetScreenState extends State<CreateBetScreen> {
   int get _freq => _freqs[_iFreq];
   int get _week => _weeks[_iWeek];
   int get _price => _prices[_iPrice];
+  int get _potCap => _potCaps[_iPotCap];
+
+  /// Maximale Teilnehmerzahl = Topf-Deckel ÷ Einsatz (Roland-Regel).
+  int get _maxRunners => _price <= 0 ? 0 : _potCap ~/ _price;
 
   String _fmtKm(double km) => km == km.roundToDouble() ? km.toStringAsFixed(0) : km.toString();
 
   String get _sentence =>
-      'I bet $_price\$ that I will, for the duration of $_week weeks, jog $_freq times a week, each time ${_fmtKm(_distance)} km.';
+      'I bet ${Money.of(_price, _currency).format()} that I will, for the duration of $_week weeks, jog $_freq times a week, each time ${_fmtKm(_distance)} km.';
+
+  String get _potLine =>
+      'pot up to ${Money.of(_potCap, _currency).format()}  ·  max $_maxRunners runners';
 
   @override
   Widget build(BuildContext context) {
@@ -86,7 +103,8 @@ class _CreateBetScreenState extends State<CreateBetScreen> {
                   _wheel('distance', _distances.map(_fmtKm).toList(), _distCtrl, (i) => setState(() => _iDist = i)),
                   _wheel('x / week', _freqs.map((e) => '$e').toList(), _freqCtrl, (i) => setState(() => _iFreq = i)),
                   _wheel('weeks', _weeks.map((e) => '$e').toList(), _weekCtrl, (i) => setState(() => _iWeek = i)),
-                  _wheel('entry \$', _prices.map((e) => '$e').toList(), _priceCtrl, (i) => setState(() => _iPrice = i)),
+                  _wheel('entry €', _prices.map((e) => '$e').toList(), _priceCtrl, (i) => setState(() => _iPrice = i)),
+                  _wheel('pot cap', _potCaps.map((e) => '$e').toList(), _potCapCtrl, (i) => setState(() => _iPotCap = i)),
                 ],
               ),
             ),
@@ -95,7 +113,14 @@ class _CreateBetScreenState extends State<CreateBetScreen> {
               margin: const EdgeInsets.symmetric(horizontal: 16),
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(8)),
-              child: Text(_sentence, style: const TextStyle(color: AppColors.textPrimary, fontSize: 15, height: 1.35)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(_sentence, style: const TextStyle(color: AppColors.textPrimary, fontSize: 15, height: 1.35)),
+                  const SizedBox(height: 8),
+                  Text(_potLine, style: const TextStyle(color: AppColors.textMuted, fontSize: 13)),
+                ],
+              ),
             ),
             const SizedBox(height: 12),
             Padding(
@@ -125,7 +150,9 @@ class _CreateBetScreenState extends State<CreateBetScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
         title: const Text('place bet', style: TextStyle(color: AppColors.textPrimary)),
-        content: Text('You are about to place a bet of $_price\$.',
+        content: Text(
+            'You are about to place a bet of ${Money.of(_price, _currency).format()}.\n'
+            'Pot up to ${Money.of(_potCap, _currency).format()} · max $_maxRunners runners.',
             style: const TextStyle(color: AppColors.textMuted)),
         actions: [
           TextButton(
@@ -147,14 +174,15 @@ class _CreateBetScreenState extends State<CreateBetScreen> {
 
   // Wette aus der Auswahl bauen, in My Bets ablegen und dorthin wechseln.
   void _place() {
+    // Neuer Pot: nur der Ersteller (starters = 1, dropouts = 0, Standard-Fee/Profil).
     final bet = Bet(
       name: 'jog ${_fmtKm(_distance)}km',
       sport: Sport.jogging,
       distanceKm: _distance,
       iterationsPerWeek: _freq,
       expirationDays: _week * 7,
-      entryPrice: _price.toDouble(),
-      increaseInValuePct: 0,
+      stake: Money.of(_price, _currency),
+      potCap: Money.of(_potCap, _currency),
     );
     myBetsStore.add(bet);
     final messenger = ScaffoldMessenger.of(context);

@@ -101,7 +101,7 @@ class _MyBetTile extends StatelessWidget {
                 child: Text(bet.name,
                     style: const TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.w700)),
               ),
-              Text('${bet.entryPrice.toStringAsFixed(2)}\$',
+              Text(bet.stake.format(),
                   style: const TextStyle(color: AppColors.price, fontSize: 15, fontWeight: FontWeight.w700)),
             ],
           ),
