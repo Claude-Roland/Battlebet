@@ -180,11 +180,11 @@ class _BetsListScreenState extends State<BetsListScreen> {
       child: Row(
         children: [
           SizedBox(width: BetRow.iconColWidth, child: _newSort()),
-          _hSort('distance', BetSortKey.distanz, BetRow.flexDistance),
+          _hSort('distance', BetSortKey.distanz, BetRow.flexDistance, right: true),
           const SizedBox(width: BetRow.colGap),
-          _hSort('interval', BetSortKey.interval, BetRow.flexInterval),
+          _hSort('interval', BetSortKey.interval, BetRow.flexInterval, right: true),
           const SizedBox(width: BetRow.colGap),
-          _hSort('expiration', BetSortKey.expiration, BetRow.flexExpiration),
+          _hSort('expiration', BetSortKey.expiration, BetRow.flexExpiration, right: true),
           _hSort('stake', BetSortKey.einsatz, BetRow.flexPrice, right: true),
           _hSort('increase', BetSortKey.wertzuwachs, BetRow.flexIncrease, right: true),
           const SizedBox(width: BetRow.bookmarkColWidth),
