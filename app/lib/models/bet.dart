@@ -45,6 +45,7 @@ class Bet {
     this.dropouts = 0,
     this.tag = BetTag.none,
     this.bookmarked = false,
+    this.createdSeq = 0,
   });
 
   final String name;
@@ -64,6 +65,11 @@ class Bet {
 
   final BetTag tag;
   final bool bookmarked;
+
+  /// Reihenfolge des Anlegens (hoeher = neuer). SAMEN fuer den spaeteren echten
+  /// Zeitstempel; heute treibt er nur die „Neu"-Sortierung der Liste. Der Server
+  /// ersetzt das spaeter durch die echte Erstellzeit.
+  final int createdSeq;
 
   /// Fester Topf-Deckel aus dem Pot-Typ (null = unbegrenzt).
   Money? get potCap => tier.capIn(stake.currency);
