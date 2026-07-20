@@ -7,6 +7,10 @@
 // macht spaeter der SERVER ueber die (signierten) Rohdaten. Die Bewegungsdaten
 // sind hier SIMULIERT (beschleunigt) — ein Lauf wird als Buendel roher `RunSample`
 // gesammelt; der Wechsel zu echten Sensoren/Server ist nur ein Quellen-Austausch.
+//
+// (Segment-Balken/Legende bewusst ENTFERNT 2026-07-20: wir planen keine gemischten
+// Taetigkeiten, darum verwirrt eine Aufteilung nach Gehen/Joggen/Rennen mehr als
+// sie nuetzt. Der `recorded activity`-Hinweis + die Verlangsamungs-Warnung bleiben.)
 
 import 'dart:async';
 import 'dart:math' as math;
@@ -280,13 +284,6 @@ class _RecorderScreenState extends State<RecorderScreen> {
             const SizedBox(height: 6),
             Text('${(_meters / (_targetMeters == 0 ? 1 : _targetMeters) * 100).clamp(0, 100).round()}% of target',
                 style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
-            const SizedBox(height: 14),
-            // Segmente nach Aktivitaetstyp (was das Original als Abschnitte zeigt).
-            const Text('segments', style: TextStyle(color: AppColors.orange, fontSize: 13, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 6),
-            _segmentsBar(),
-            const SizedBox(height: 6),
-            _legend(),
           ],
           if (!recording) ...[
             const SizedBox(height: 8),
@@ -377,39 +374,6 @@ class _RecorderScreenState extends State<RecorderScreen> {
         widthFactor: p,
         child: Container(decoration: BoxDecoration(color: AppColors.orange, borderRadius: BorderRadius.circular(h / 2))),
       ),
-    );
-  }
-
-  Widget _segmentsBar() {
-    final segs = Run(source: _source, samples: _samples).segments;
-    if (segs.isEmpty) {
-      return Container(height: 12, decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(6)));
-    }
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(6),
-      child: Row(
-        children: [
-          for (final s in segs)
-            Expanded(
-              flex: math.max(1, s.meters),
-              child: Container(height: 12, color: _activityColor(s.type)),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _legend() {
-    Widget item(ActivityType t) => Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(width: 10, height: 10, color: _activityColor(t)),
-            const SizedBox(width: 4),
-            Text(t.label, style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
-          ],
-        );
-    return Row(
-      children: [item(ActivityType.walking), const SizedBox(width: 12), item(ActivityType.jogging), const SizedBox(width: 12), item(ActivityType.running)],
     );
   }
 

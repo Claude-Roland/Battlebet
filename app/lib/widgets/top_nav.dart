@@ -1,27 +1,33 @@
 // Top-Navigation (Katalog: `TopNav`) — die feste obere Leiste.
 // Reiter: bets | create bet | my bets, plus Bookmark links und Profil rechts.
 // `onTap(index)` meldet Reiter-Taps (0=bets, 1=create bet, 2=my bets); der
-// jeweilige Screen entscheidet, wohin navigiert wird.
+// jeweilige Screen entscheidet, wohin navigiert wird. Das Personen-Symbol rechts
+// oeffnet die Profil-Seite (`ProfileScreen`).
 //
-// Rechts sitzt ein kleiner VORSCHAU-Chip (science-Symbol) mit der aktuellen
-// Vertrauensstufe (Bronze/Silber/Obsidian). Antippen schaltet die Stufe weiter —
-// so sieht man live, wie sich Ausgrauen/Freigeben von Pots aendert. Nur ein
-// Entwickler-/Vorschau-Hilfsmittel, faellt spaeter weg.
+// Rechts sitzt ausserdem ein kleiner VORSCHAU-Chip (science-Symbol) mit der
+// aktuellen Bet-Tier-Stufe. Antippen schaltet die Stufe weiter — so sieht man
+// live, wie sich Ausgrauen/Freigeben von Pots aendert. Nur ein Entwickler-/
+// Vorschau-Hilfsmittel, faellt spaeter weg.
 
 import 'package:flutter/material.dart';
 
 import '../data/user_session.dart';
 import '../models/tiers.dart';
+import '../screens/profile_screen.dart';
 import '../theme/app_theme.dart';
 
 class TopNav extends StatelessWidget {
-  const TopNav({super.key, this.activeIndex = 0, this.onTap});
+  const TopNav({super.key, this.activeIndex = 0, this.onTap, this.onProfileScreen = false});
 
-  /// 0 = bets, 1 = create bet, 2 = my bets.
+  /// 0 = bets, 1 = create bet, 2 = my bets. (-1 = keiner aktiv, z. B. auf Profil.)
   final int activeIndex;
 
   /// Wird mit dem Index des angetippten Reiters aufgerufen.
   final void Function(int index)? onTap;
+
+  /// True, wenn gerade die Profil-Seite offen ist (Personen-Symbol hervorgehoben,
+  /// kein erneutes Oeffnen).
+  final bool onProfileScreen;
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +46,15 @@ class TopNav extends StatelessWidget {
             const Spacer(),
             _statusChip(),
             const SizedBox(width: 8),
-            const Icon(Icons.person_outline, color: Colors.white, size: 24),
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: onProfileScreen
+                  ? null
+                  : () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                      ),
+              child: Icon(onProfileScreen ? Icons.person : Icons.person_outline, color: Colors.white, size: 24),
+            ),
           ],
         ),
       ),
@@ -66,7 +80,7 @@ class TopNav extends StatelessWidget {
     );
   }
 
-  /// Vorschau-Chip: zeigt die simulierte Vertrauensstufe, tippen schaltet weiter.
+  /// Vorschau-Chip: zeigt die simulierte Bet-Tier-Stufe, tippen schaltet weiter.
   Widget _statusChip() {
     return AnimatedBuilder(
       animation: userSession,
