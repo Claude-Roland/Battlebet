@@ -34,6 +34,10 @@ class BetRow extends StatelessWidget {
   static const double iconColWidth = 30;
   static const double bookmarkColWidth = 18;
 
+  // Etwas Luft zwischen distance–interval und interval–expiration
+  // (identisch in Kopfzeile und Datenzeile, damit beide fluchten).
+  static const double colGap = 8;
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
@@ -98,7 +102,9 @@ class BetRow extends StatelessWidget {
                 ),
               ),
               _col('${_fmtKm(bet.distanceKm)}km', flexDistance, bold: true),
+              const SizedBox(width: colGap),
               _col('${bet.iterationsPerWeek} x w', flexInterval, color: AppColors.textMuted),
+              const SizedBox(width: colGap),
               _col('${bet.expirationDays}d', flexExpiration),
               // Einsatz (Money) und der ABGELEITETE "increase" aus der Pot-Oekonomie.
               _col(bet.stake.format(), flexPrice,
