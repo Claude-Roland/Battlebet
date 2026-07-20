@@ -1,12 +1,13 @@
 // Wett-Zeile (Katalog: `BetRow`) — eine Zeile der Bets-Liste.
 // Zwei Textzeilen:
 //   Zeile 1: Name + Sportart (+ Tag) + Pot-Typ-Chip .......... Bookmark/Schloss
-//   Zeile 2: [Sport-Icon] distance | interval | expiration | entry price | increase
+//   Zeile 2: [Sport-Icon] distance | interval | expiration | stake | increase
+//
+// Die Spaltenbreiten (flex*) werden auch vom Spaltenkopf in `bets_list_screen`
+// benutzt, damit Kopfzeile und Datenzeile exakt fluchten.
 //
 // Nach Rolands Prinzip „gesperrt sichtbar als Anreiz": Pots, die die aktuelle
-// Vertrauensstufe (noch) nicht eroeffnen/betreten darf, werden GEDIMMT und tragen
-// statt der Bookmark ein Schloss. Sichtbar bleiben sie — man kann sie antippen und
-// ansehen, nur nicht beitreten. Reagiert live auf den Status-Umschalter.
+// Stufe (noch) nicht darf, werden GEDIMMT und tragen statt der Bookmark ein Schloss.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -21,12 +22,13 @@ class BetRow extends StatelessWidget {
 
   final Bet bet;
 
-  // Gemeinsame Spaltenbreiten (auch vom Spaltenkopf verwendet).
-  static const int flexDistance = 20;
-  static const int flexInterval = 16;
-  static const int flexExpiration = 16;
-  static const int flexPrice = 22;
-  static const int flexIncrease = 14;
+  // Gemeinsame Spaltenbreiten (auch vom Spaltenkopf verwendet). Auf die
+  // Kopf-Beschriftungen (distance/interval/expiration/stake/increase) abgestimmt.
+  static const int flexDistance = 18;
+  static const int flexInterval = 15;
+  static const int flexExpiration = 19;
+  static const int flexPrice = 20;
+  static const int flexIncrease = 18;
 
   // Breite der Sport-Ikon-Spalte links und der Bookmark-/Schloss-Spalte rechts.
   static const double iconColWidth = 30;
@@ -34,7 +36,6 @@ class BetRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Reagiert auf den Vorschau-Status: gesperrte Pots werden gedimmt.
     return AnimatedBuilder(
       animation: userSession,
       builder: (context, _) {
@@ -120,7 +121,8 @@ class BetRow extends StatelessWidget {
       child: Text(
         text,
         textAlign: align,
-        style: TextStyle(color: color, fontSize: 15, fontWeight: bold ? FontWeight.w700 : FontWeight.w400),
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(color: color, fontSize: 14, fontWeight: bold ? FontWeight.w700 : FontWeight.w400),
       ),
     );
   }
@@ -140,7 +142,7 @@ class BetRow extends StatelessWidget {
     );
   }
 
-  /// Pot-Typ-Chip (Limited / Limited large / Unlimited) — als dezenter Umriss.
+  /// Bet-Tier-Chip (Tier 1/2/3) — als dezenter Umriss.
   Widget _tierChip(PotTier tier) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
@@ -156,8 +158,7 @@ class BetRow extends StatelessWidget {
   /// Ganze Zahlen ohne Nachkomma, sonst mit (7 -> "7", 7.5 -> "7.5").
   String _fmtKm(double km) => km == km.roundToDouble() ? km.toStringAsFixed(0) : km.toString();
 
-  /// Sportart -> SVG-Asset. Aktuell nur Joggen/Rennen vorhanden;
-  /// alles andere faellt vorerst auf das Jogger-Icon zurueck.
+  /// Sportart -> SVG-Asset (Icon-Policy: aus der Sportart abgeleitet).
   String _sportAsset(Sport s) => switch (s) {
         Sport.running => 'Renner-Icon.svg',
         _ => 'Jogger-Icon.svg',

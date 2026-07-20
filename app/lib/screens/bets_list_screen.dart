@@ -2,12 +2,12 @@
 // Aufbau von oben nach unten:
 //   1) TopNav             -> feste Navigationsleiste
 //   2) FILTER-ZEILE       -> antippbar; oeffnet das WAEHLRAD (Sport + Distanz + Einsatz + Haeufigkeit).
-//   3) SORTIER-KOPFZEILE  -> vier antippbare Schluessel: Neu | Distanz | Einsatz | Wertzuwachs.
+//   3) SORTIER-KOPFZEILE  -> jetzt SPALTEN-GENAU ausgerichtet (fluchtet mit BetRow):
+//        [Uhr = New] distance | interval | expiration | stake | increase
+//      Jede Spalte ist antippbar zum Sortieren; die aktive traegt einen Richtungspfeil.
 //   4) Liste der BetRow (erst GEFILTERT, dann SORTIERT), getrennt durch GrooveDivider.
 //
-// UI-Sprache Englisch als Basis (Roland 2026-07-20). MVP: nur Joggen -> das
-// Sport-Rad bietet schon jogging + running (Samen); „running" liefert heute eine
-// leere Liste. Weitere Sportarten kommen als weitere Rad-Eintraege.
+// UI-Sprache Englisch als Basis (Roland 2026-07-20).
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -22,23 +22,18 @@ import 'bet_detail_screen.dart';
 import 'create_bet_screen.dart';
 import 'my_bets_screen.dart';
 
-/// Wonach die Liste sortiert wird.
-enum BetSortKey { neu, distanz, einsatz, wertzuwachs }
+/// Wonach die Liste sortiert wird. „neu" = Zeit (Uhr-Symbol); die anderen sind Spalten.
+enum BetSortKey { neu, distanz, interval, expiration, einsatz, wertzuwachs }
 
 extension _BetSortKeyX on BetSortKey {
-  String get label => switch (this) {
-        BetSortKey.neu => 'New',
-        BetSortKey.distanz => 'Distance',
-        BetSortKey.einsatz => 'Stake',
-        BetSortKey.wertzuwachs => 'Increase',
-      };
-
   /// Voreingestellte Richtung beim WECHSEL auf diesen Schluessel.
   bool get defaultDesc => switch (this) {
-        BetSortKey.neu => true,
-        BetSortKey.distanz => false,
-        BetSortKey.einsatz => false,
-        BetSortKey.wertzuwachs => true,
+        BetSortKey.neu => true, // neueste zuerst
+        BetSortKey.distanz => false, // kuerzeste zuerst
+        BetSortKey.interval => false, // seltenste zuerst
+        BetSortKey.expiration => false, // laeuft am ehesten aus zuerst
+        BetSortKey.einsatz => false, // guenstigste zuerst
+        BetSortKey.wertzuwachs => true, // groesster Zuwachs zuerst
       };
 }
 
@@ -58,7 +53,7 @@ class _BetsListScreenState extends State<BetsListScreen> {
   static const List<Sport> _sportChoices = [Sport.jogging, Sport.running];
   static const List<double> _distSteps = [0, 5, 7, 10, 15, 20, 50, 100, 200];
   static const List<int> _stakeSteps = [0, 5, 10, 20, 30, 50, 80, 100];
-  Sport? _filterSport; // null = alle Sportarten
+  Sport? _filterSport;
   double _minDist = 0;
   int _minStake = 0;
   int _minFreq = 1;
@@ -80,6 +75,10 @@ class _BetsListScreenState extends State<BetsListScreen> {
         return a.createdSeq.compareTo(b.createdSeq);
       case BetSortKey.distanz:
         return a.distanceKm.compareTo(b.distanceKm);
+      case BetSortKey.interval:
+        return a.iterationsPerWeek.compareTo(b.iterationsPerWeek);
+      case BetSortKey.expiration:
+        return a.expirationDays.compareTo(b.expirationDays);
       case BetSortKey.einsatz:
         return a.stake.minor.compareTo(b.stake.minor);
       case BetSortKey.wertzuwachs:
@@ -166,6 +165,74 @@ class _BetsListScreenState extends State<BetsListScreen> {
                   style: TextStyle(color: Colors.white.withValues(alpha: 0.92), fontSize: 13)),
             ),
             const Icon(Icons.tune, color: Colors.white, size: 19),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 3) Sortier-Kopfzeile: spalten-genau (nutzt dieselben flex-Werte wie BetRow).
+  //    Links das Uhr-Symbol = „New" (Zeit); dann die fuenf Datenspalten, jede sortierbar.
+  Widget _sortHeader() {
+    return Container(
+      color: AppColors.background,
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+      child: Row(
+        children: [
+          SizedBox(width: BetRow.iconColWidth, child: _newSort()),
+          _hSort('distance', BetSortKey.distanz, BetRow.flexDistance),
+          _hSort('interval', BetSortKey.interval, BetRow.flexInterval),
+          _hSort('expiration', BetSortKey.expiration, BetRow.flexExpiration),
+          _hSort('stake', BetSortKey.einsatz, BetRow.flexPrice, right: true),
+          _hSort('increase', BetSortKey.wertzuwachs, BetRow.flexIncrease, right: true),
+          const SizedBox(width: BetRow.bookmarkColWidth),
+        ],
+      ),
+    );
+  }
+
+  /// „New"-Sortierung als Uhr-Symbol (wie im Storyboard), in der Icon-Spalte links.
+  Widget _newSort() {
+    final active = _key == BetSortKey.neu;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => _onSort(BetSortKey.neu),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.schedule, size: 15, color: active ? AppColors.orange : AppColors.textMuted),
+          if (active)
+            Icon(_desc ? Icons.arrow_drop_down : Icons.arrow_drop_up, size: 13, color: AppColors.orange),
+        ],
+      ),
+    );
+  }
+
+  /// Eine sortierbare Spalten-Kopfzelle; aktive Spalte orange + Richtungspfeil.
+  Widget _hSort(String label, BetSortKey key, int flex, {bool right = false}) {
+    final active = _key == key;
+    return Expanded(
+      flex: flex,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => _onSort(key),
+        child: Row(
+          mainAxisAlignment: right ? MainAxisAlignment.end : MainAxisAlignment.start,
+          children: [
+            Flexible(
+              child: Text(
+                label,
+                overflow: TextOverflow.ellipsis,
+                textAlign: right ? TextAlign.right : TextAlign.left,
+                style: TextStyle(
+                  color: active ? AppColors.orange : AppColors.textMuted,
+                  fontSize: 11,
+                  fontWeight: active ? FontWeight.w800 : FontWeight.w600,
+                ),
+              ),
+            ),
+            if (active)
+              Icon(_desc ? Icons.arrow_drop_down : Icons.arrow_drop_up, size: 14, color: AppColors.orange),
           ],
         ),
       ),
@@ -339,61 +406,6 @@ class _BetsListScreenState extends State<BetsListScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  // 3) Sortier-Kopfzeile: vier antippbare Schluessel; aktiver orange + Richtungspfeil.
-  Widget _sortHeader() {
-    return Container(
-      color: AppColors.background,
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 9),
-      child: Row(
-        children: [
-          const Icon(Icons.swap_vert, size: 15, color: AppColors.textMuted),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _sortItem(BetSortKey.neu),
-                _sortItem(BetSortKey.distanz),
-                _sortItem(BetSortKey.einsatz),
-                _sortItem(BetSortKey.wertzuwachs),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _sortItem(BetSortKey key) {
-    final active = _key == key;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => _onSort(key),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 3),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              key.label,
-              style: TextStyle(
-                color: active ? AppColors.orange : AppColors.textMuted,
-                fontSize: 12.5,
-                fontWeight: active ? FontWeight.w800 : FontWeight.w600,
-              ),
-            ),
-            if (active)
-              Icon(
-                _desc ? Icons.arrow_drop_down : Icons.arrow_drop_up,
-                size: 18,
-                color: AppColors.orange,
-              ),
-          ],
-        ),
       ),
     );
   }
