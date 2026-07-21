@@ -56,7 +56,11 @@ class BetDetailScreen extends StatelessWidget {
     return '${d.day} ${months[d.month - 1]} ${d.year}';
   }
 
-  String get _sportAsset => bet.sport == Sport.running ? 'Renner-Icon.svg' : 'Jogger-Icon.svg';
+  String get _sportAsset => switch (bet.sport) {
+        Sport.running => 'Renner-Icon.svg',
+        Sport.wandern => 'Wanderer-Icon.svg',
+        _ => 'Jogger-Icon.svg',
+      };
 
   @override
   Widget build(BuildContext context) {

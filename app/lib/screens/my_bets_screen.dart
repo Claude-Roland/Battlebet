@@ -236,7 +236,11 @@ class _MyBetTile extends StatelessWidget {
   }
 
   /// Sportart -> SVG-Asset (Icon-Policy: aus der Sportart abgeleitet, nie hart verdrahtet).
-  String _sportAsset(Sport s) => s == Sport.running ? 'Renner-Icon.svg' : 'Jogger-Icon.svg';
+  String _sportAsset(Sport s) => switch (s) {
+        Sport.running => 'Renner-Icon.svg',
+        Sport.wandern => 'Wanderer-Icon.svg',
+        _ => 'Jogger-Icon.svg',
+      };
 
   String _fmtKm(double km) => km == km.roundToDouble() ? km.toStringAsFixed(0) : km.toString();
 }

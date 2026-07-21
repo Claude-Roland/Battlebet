@@ -167,6 +167,7 @@ class BetRow extends StatelessWidget {
   /// Sportart -> SVG-Asset (Icon-Policy: aus der Sportart abgeleitet).
   String _sportAsset(Sport s) => switch (s) {
         Sport.running => 'Renner-Icon.svg',
+        Sport.wandern => 'Wanderer-Icon.svg',
         _ => 'Jogger-Icon.svg',
       };
 }

@@ -50,7 +50,7 @@ class _BetsListScreenState extends State<BetsListScreen> {
   bool _desc = true;
 
   // --- Filter (Waehlrad). null / 0 / 1 bedeuten „alle". ---
-  static const List<Sport> _sportChoices = [Sport.jogging, Sport.running];
+  static const List<Sport> _sportChoices = [Sport.jogging, Sport.running, Sport.wandern];
   static const List<double> _distSteps = [0, 5, 7, 10, 15, 20, 50, 100, 200];
   static const List<int> _stakeSteps = [0, 5, 10, 20, 30, 50, 80, 100];
   Sport? _filterSport;

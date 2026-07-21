@@ -13,7 +13,8 @@ enum Sport {
   running,
   skating,
   offRoadBiking,
-  crossCountrySkiing;
+  crossCountrySkiing,
+  wandern;
 
   /// Anzeige-Text der Sportart (wie im Entwurf).
   String get label => switch (this) {
@@ -22,6 +23,7 @@ enum Sport {
         Sport.skating => 'skating',
         Sport.offRoadBiking => 'off-road biking',
         Sport.crossCountrySkiing => 'cross country skiing',
+        Sport.wandern => 'hiking',
       };
 }
 

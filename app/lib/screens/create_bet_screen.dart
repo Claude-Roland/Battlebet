@@ -43,6 +43,7 @@ class _CreateBetScreenState extends State<CreateBetScreen> {
   int _iPrice = 19; // 20 €
 
   PotTier _tier = PotTier.limited; // Standard: der fuer alle offene Pot
+  Sport _sport = Sport.jogging; // gewaehlte Sportart (jogging/running/hiking)
 
   late final _distCtrl = FixedExtentScrollController(initialItem: _iDist);
   late final _freqCtrl = FixedExtentScrollController(initialItem: _iFreq);
@@ -80,8 +81,47 @@ class _CreateBetScreenState extends State<CreateBetScreen> {
 
   String _fmtKm(double km) => km == km.roundToDouble() ? km.toStringAsFixed(0) : km.toString();
 
+  String get _verb => switch (_sport) {
+        Sport.running => 'run',
+        Sport.wandern => 'hike',
+        _ => 'jog',
+      };
+
+  String _asset(Sport s) => switch (s) {
+        Sport.running => 'Renner-Icon.svg',
+        Sport.wandern => 'Wanderer-Icon.svg',
+        _ => 'Jogger-Icon.svg',
+      };
+
+  Widget _sportChip(Sport s) {
+    final active = _sport == s;
+    return GestureDetector(
+      onTap: () => setState(() => _sport = s),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: active ? AppColors.orange.withValues(alpha: 0.16) : AppColors.surface,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: active ? AppColors.orange : AppColors.divider),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SvgPicture.asset('assets/icons/${_asset(s)}', height: 22),
+            const SizedBox(width: 6),
+            Text(s.label,
+                style: TextStyle(
+                    color: active ? AppColors.textPrimary : AppColors.textMuted,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600)),
+          ],
+        ),
+      ),
+    );
+  }
+
   String get _sentence =>
-      'I bet ${Money.of(_price, _currency).format()} that I will, for the duration of $_week weeks, jog $_freq times a week, each time ${_fmtKm(_distance)} km.';
+      'I bet ${Money.of(_price, _currency).format()} that I will, for the duration of $_week weeks, $_verb $_freq times a week, each time ${_fmtKm(_distance)} km.';
 
   /// Info zum gewaehlten Pot-Typ (Deckel + max. Teilnehmer, oder „kein Limit").
   String get _potInfoLine => _tier.isUnlimited
@@ -102,10 +142,10 @@ class _CreateBetScreenState extends State<CreateBetScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
                   children: [
-                    SvgPicture.asset('assets/icons/Jogger-Icon.svg', height: 30),
-                    const SizedBox(width: 8),
-                    const Text('jogging',
-                        style: TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
+                    for (final s in const [Sport.jogging, Sport.running, Sport.wandern]) ...[
+                      _sportChip(s),
+                      const SizedBox(width: 10),
+                    ],
                   ],
                 ),
               ),
@@ -255,8 +295,8 @@ class _CreateBetScreenState extends State<CreateBetScreen> {
   // Neuer Pot: nur der Ersteller (starters = 1, dropouts = 0, Standard-Fee).
   void _place() {
     final bet = Bet(
-      name: 'jog ${_fmtKm(_distance)}km',
-      sport: Sport.jogging,
+      name: '$_verb ${_fmtKm(_distance)}km',
+      sport: _sport,
       distanceKm: _distance,
       iterationsPerWeek: _freq,
       expirationDays: _week * 7,
