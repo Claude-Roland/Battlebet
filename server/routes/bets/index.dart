@@ -5,6 +5,7 @@ import 'package:battlebet_server/src/api.dart';
 import 'package:battlebet_server/src/bets.dart';
 import 'package:battlebet_server/src/db.dart';
 import 'package:battlebet_server/src/errors.dart';
+import 'package:battlebet_server/src/limits.dart';
 
 Future<Response> onRequest(RequestContext context) async {
   return switch (context.request.method) {
@@ -42,7 +43,10 @@ Future<Response> _create(RequestContext context) async {
   if (currency != 'EUR') return fail('Only EUR is supported in test mode.');
   if (distanceKm <= 0) return fail('Distance must be positive.');
   if (ipw < 1 || ipw > 21) return fail('Iterations per week out of range.');
-  if (days < 1 || days > 3650) return fail('Duration out of range.');
+  if (days < 7 || days % 7 != 0) {
+    return fail('Duration must be whole weeks (a multiple of 7 days).');
+  }
+  if (days > 3640) return fail('Duration is too long.');
   if (stakeMinor <= 0) return fail('Stake must be positive.');
   if (userTier < tier) {
     return fail('Your Bet Tier is too low to open this pot.', status: 403);
@@ -50,6 +54,12 @@ Future<Response> _create(RequestContext context) async {
 
   try {
     final betId = await db.runTx((tx) async {
+      if (await activeParticipationCount(tx, uid) >= kMaxOverlappingBets) {
+        throw HttpError(
+          'You can be in at most $kMaxOverlappingBets bets at once.',
+          status: 409,
+        );
+      }
       final w = await tx.execute(
         Sql.named('''
           UPDATE wallets SET balance_minor = balance_minor - @stake, updated_at = now()
@@ -65,10 +75,16 @@ Future<Response> _create(RequestContext context) async {
         Sql.named('''
           INSERT INTO bets (creator_id, name, sport, distance_km, iterations_per_week,
             expiration_days, stake_minor, currency, tier, fee_bps, tag, status,
-            entry_closes_at, ends_at)
-          VALUES (@uid:uuid, @name, @sport, @dist, @ipw, @days:int4, @stake, @cur, @tier:int4, 1000, 0, 0,
+            entry_closes_at, starts_at, ends_at, min_participants)
+          VALUES (@uid:uuid, @name, @sport, @dist, @ipw, @days:int4, @stake, @cur, @tier:int4,
+            1000, 0,
+            CASE WHEN @tier:int4 < 2 THEN 0 ELSE 1 END,
             CASE WHEN @tier:int4 < 2 THEN now() + interval '7 days' ELSE NULL END,
-            now() + make_interval(days => @days:int4))
+            CASE WHEN @tier:int4 < 2 THEN now() + interval '7 days' ELSE now() END,
+            CASE WHEN @tier:int4 < 2
+                 THEN now() + interval '7 days' + make_interval(days => @days:int4)
+                 ELSE now() + make_interval(days => @days:int4) END,
+            3)
           RETURNING id
         '''),
         parameters: {

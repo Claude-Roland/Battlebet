@@ -18,13 +18,13 @@ const _potTierLabels = [
   'Bet Tier 3 · open',
 ];
 const _potTierShort = ['Tier 1', 'Tier 2', 'Tier 3'];
-int _clampTier(int t) => t < 0 ? 0 : (t > 2 ? 2 : t);
-String potTierLabel(int t) => _potTierLabels[_clampTier(t)];
-String potTierShort(int t) => _potTierShort[_clampTier(t)];
+const _phases = ['gathering', 'running', 'resolved', 'cancelled'];
+int _clamp(int v, int max) => v < 0 ? 0 : (v > max ? max : v);
+String potTierLabel(int t) => _potTierLabels[_clamp(t, 2)];
+String potTierShort(int t) => _potTierShort[_clamp(t, 2)];
+String phaseLabel(int status) => _phases[_clamp(status, 3)];
 
-/// Pot-Oekonomie in Integer-Cent — spiegelt models/bet_economics.dart der App:
-/// Gebuehr nur vom Aussteiger-Geld, Auszahlung je Durchhalter = Einsatz + Anteil
-/// am (Aussteiger-Geld - Gebuehr). Immer >= Einsatz.
+/// Pot-Oekonomie in Integer-Cent — spiegelt models/bet_economics.dart der App.
 Map<String, dynamic> economy({
   required int stakeMinor,
   required int feeBps,
@@ -64,6 +64,7 @@ Map<String, dynamic> betJson(Map<String, dynamic> r, {int? myState}) {
   final tier = (r['tier'] as num).toInt();
   final starters = (r['starters'] as num).toInt();
   final dropouts = (r['dropouts'] as num).toInt();
+  final status = (r['status'] as num).toInt();
   final eco = economy(
     stakeMinor: stakeMinor,
     feeBps: feeBps,
@@ -85,10 +86,14 @@ Map<String, dynamic> betJson(Map<String, dynamic> r, {int? myState}) {
     'tierShort': potTierShort(tier),
     'feeBps': feeBps,
     'tag': (r['tag'] as num).toInt(),
-    'status': (r['status'] as num).toInt(),
+    'status': status,
+    'phase': phaseLabel(status),
     'createdAt': (r['created_at'] as DateTime).toUtc().toIso8601String(),
+    'startsAt': (r['starts_at'] as DateTime?)?.toUtc().toIso8601String(),
     'endsAt': (r['ends_at'] as DateTime?)?.toUtc().toIso8601String(),
     'entryClosesAt': (r['entry_closes_at'] as DateTime?)?.toUtc().toIso8601String(),
+    'minParticipants': (r['min_participants'] as num).toInt(),
+    'realStarters': (r['real_starters'] as num).toInt(),
     'starters': starters,
     'dropouts': dropouts,
     'joined': myState != null,
@@ -100,7 +105,9 @@ Map<String, dynamic> betJson(Map<String, dynamic> r, {int? myState}) {
 const _selectBet = '''
   b.id, b.name, b.sport, b.distance_km::float8 AS distance_km,
   b.iterations_per_week, b.expiration_days, b.stake_minor, b.currency,
-  b.tier, b.fee_bps, b.tag, b.status, b.created_at, b.ends_at, b.entry_closes_at,
+  b.tier, b.fee_bps, b.tag, b.status, b.created_at, b.starts_at, b.ends_at,
+  b.entry_closes_at, b.min_participants,
+  COALESCE(agg.real_starters, 0) AS real_starters,
   (b.seed_starters + COALESCE(agg.real_starters, 0)) AS starters,
   (b.seed_dropouts + COALESCE(agg.real_dropouts, 0)) AS dropouts,
   my.state AS my_state

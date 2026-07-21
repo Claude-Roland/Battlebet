@@ -5,6 +5,7 @@ import 'package:battlebet_server/src/api.dart';
 import 'package:battlebet_server/src/bets.dart';
 import 'package:battlebet_server/src/db.dart';
 import 'package:battlebet_server/src/errors.dart';
+import 'package:battlebet_server/src/limits.dart';
 
 Future<Response> onRequest(RequestContext context, String id) async {
   if (context.request.method != HttpMethod.post) {
@@ -24,8 +25,11 @@ Future<Response> onRequest(RequestContext context, String id) async {
       if (br.isEmpty) throw HttpError('Bet not found.', status: 404);
       final bet = br.first.toColumnMap();
       final status = (bet['status'] as num).toInt();
-      if (status >= 2) throw HttpError('This bet is closed.', status: 409);
       final tier = (bet['tier'] as num).toInt();
+      if (status >= 2) throw HttpError('This bet is closed.', status: 409);
+      if (status == 1 && tier < 2) {
+        throw HttpError('The entry window for this pot has closed.', status: 409);
+      }
       if (userTier < tier) {
         throw HttpError('Your Bet Tier is too low for this pot.', status: 403);
       }
@@ -44,6 +48,13 @@ Future<Response> onRequest(RequestContext context, String id) async {
         parameters: {'id': id, 'uid': uid},
       );
       if (mine.isNotEmpty) throw HttpError('You already joined this bet.', status: 409);
+
+      if (await activeParticipationCount(tx, uid) >= kMaxOverlappingBets) {
+        throw HttpError(
+          'You can be in at most $kMaxOverlappingBets bets at once.',
+          status: 409,
+        );
+      }
 
       final cap = potCapMajor(tier);
       if (cap != null) {
@@ -87,8 +98,7 @@ Future<Response> onRequest(RequestContext context, String id) async {
         parameters: {'uid': uid, 'stake': stakeMinor, 'cur': currency, 'bal': newBal, 'id': id},
       );
     });
-    final detail = await fetchBetDetail(id, uid);
-    return ok(detail);
+    return ok(await fetchBetDetail(id, uid));
   } on HttpError catch (e) {
     return fail(e.message, status: e.status);
   }

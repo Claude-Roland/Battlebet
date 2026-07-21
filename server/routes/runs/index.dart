@@ -70,9 +70,9 @@ Future<Response> _record(RequestContext context) async {
       );
       if (pr.isEmpty) throw HttpError('You are not in this bet.', status: 404);
       final p = pr.first.toColumnMap();
-      if ((p['status'] as num).toInt() >= 2) {
-        throw HttpError('This bet is closed.', status: 409);
-      }
+      final status = (p['status'] as num).toInt();
+      if (status == 0) throw HttpError('This bet has not started yet.', status: 409);
+      if (status >= 2) throw HttpError('This bet is closed.', status: 409);
       final requiredMeters = ((p['distance_km'] as num).toDouble() * 1000).round();
       final verdict = qualifyingMeters >= requiredMeters ? 0 : 1;
       final pid = p['pid'].toString();
