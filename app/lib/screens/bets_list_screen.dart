@@ -129,7 +129,8 @@ class _BetsListScreenState extends State<BetsListScreen> {
             (_filterSport == null || b.sport == _filterSport) &&
             b.distanceKm >= _minDist &&
             b.stake.minor >= _minStake * 100 &&
-            b.iterationsPerWeek >= _minFreq)
+            b.iterationsPerWeek >= _minFreq &&
+            b.status != 2)
         .toList();
     list.sort((a, b) => _desc ? _cmp(b, a) : _cmp(a, b));
     return list;

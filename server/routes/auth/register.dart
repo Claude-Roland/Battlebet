@@ -36,8 +36,8 @@ Future<Response> onRequest(RequestContext context) async {
   final res = await db.execute(
     Sql.named('''
       WITH nu AS (
-        INSERT INTO users (username, username_lc, password_hash, display_name)
-        VALUES (@u, @ulc, @ph, '')
+        INSERT INTO users (username, username_lc, password_hash, display_name, tier)
+        VALUES (@u, @ulc, @ph, '', 2)
         RETURNING id, username, display_name, tier
       ), nw AS (
         INSERT INTO wallets (user_id, currency, balance_minor, is_test)

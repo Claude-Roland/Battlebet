@@ -196,14 +196,14 @@ class ApiClient {
   Future<Bet> joinBet(String id) async => Bet.fromJson(await _post('/bets/$id/join', {}));
 
   /// Einen (eigenstaendigen) Lauf aufnehmen; der Server ordnet ihn passenden Wetten zu.
-  Future<void> recordRun({
+  Future<Map<String, dynamic>> recordRun({
     required int sport,
     required int source,
     required int totalMeters,
     required int totalSeconds,
     required int avgPace,
   }) async {
-    await _post('/runs', {
+    return _post('/runs', {
       'sport': sport,
       'source': source,
       'totalMeters': totalMeters,

@@ -17,7 +17,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import '../data/my_bets_store.dart';
+import '../data/api_client.dart';
 import '../models/bet.dart';
 import '../models/run.dart';
 import '../theme/app_theme.dart';
@@ -35,12 +35,19 @@ Color _activityColor(ActivityType t) => switch (t) {
 IconData _activityIcon(ActivityType t) =>
     t == ActivityType.walking ? Icons.directions_walk : Icons.directions_run;
 
+/// Geforderter Aktivitaetstyp aus der Sportart (running->running, wandern->walking, sonst jogging).
+ActivityType _requiredFor(Sport s) => switch (s) {
+      Sport.running => ActivityType.running,
+      Sport.wandern => ActivityType.walking,
+      _ => ActivityType.jogging,
+    };
+
 enum _Phase { ready, recording }
 
 class RecorderScreen extends StatefulWidget {
-  const RecorderScreen({super.key, required this.placed});
+  const RecorderScreen({super.key, required this.bet});
 
-  final PlacedBet placed;
+  final Bet bet;
 
   @override
   State<RecorderScreen> createState() => _RecorderScreenState();
@@ -59,9 +66,8 @@ class _RecorderScreenState extends State<RecorderScreen> {
   final _rng = math.Random();
   Timer? _timer;
 
-  late final ActivityType _required =
-      requiredActivityForRunning(widget.placed.bet.sport == Sport.running);
-  late final int _targetMeters = (widget.placed.bet.distanceKm * 1000).round();
+  late final ActivityType _required = _requiredFor(widget.bet.sport);
+  late final int _targetMeters = (widget.bet.distanceKm * 1000).round();
 
   @override
   void dispose() {
@@ -96,7 +102,11 @@ class _RecorderScreenState extends State<RecorderScreen> {
     }
     _tick++;
     const dt = 8;
-    final base = _required == ActivityType.running ? 320 : 430;
+    final base = _required == ActivityType.running
+        ? 320
+        : _required == ActivityType.walking
+            ? 700
+            : 430;
     double pace = base + 25 * math.sin(_tick / 3.0) + (_rng.nextInt(30) - 15);
     if (_tick % 22 < 4) pace += 230; // Durchhänger
     final p = pace.round().clamp(180, 1200);
@@ -146,18 +156,33 @@ class _RecorderScreenState extends State<RecorderScreen> {
     );
   }
 
-  void _finish() {
+  Future<void> _finish() async {
     _timer?.cancel();
-    final run = Run(source: _source, samples: List.of(_samples));
-    final qualifies = run.qualifyingMeters(_required) >= _targetMeters;
-    myBetsStore.recordRun(widget.placed, run, qualifies: qualifies);
     final messenger = ScaffoldMessenger.of(context);
-    Navigator.of(context).pop();
-    messenger.showSnackBar(SnackBar(
-      content: Text(qualifies
-          ? 'Run recorded — activity counted (${_fmtKm(run.qualifyingMeters(_required))} as ${_required.label}).'
-          : 'Run recorded, but the ${_required.label} target wasn\'t reached.'),
-    ));
+    final navigator = Navigator.of(context);
+    try {
+      final res = await api.recordRun(
+        sport: widget.bet.sport.index,
+        source: _source.index,
+        totalMeters: _meters,
+        totalSeconds: _elapsedSec,
+        avgPace: _avgPace,
+      );
+      if (!mounted) return;
+      final matched = (res['matchedBets'] as List?)?.length ?? 0;
+      navigator.pop();
+      messenger.showSnackBar(SnackBar(
+        content: Text(matched > 0
+            ? 'Run recorded — counts for \$matched active bet(s).'
+            : 'Run recorded, but it did not meet any active bet yet.'),
+      ));
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (_) {
+      if (!mounted) return;
+      messenger.showSnackBar(const SnackBar(content: Text('Could not reach the server.')));
+    }
   }
 
   @override
@@ -254,7 +279,7 @@ class _RecorderScreenState extends State<RecorderScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // Was die Wette verlangt.
-          _kv('recording for', '"${widget.placed.bet.name}"'),
+          _kv('recording for', '"${widget.bet.name}"'),
           _kv('target', '${_fmtKmPlain(_targetMeters)} km as ${_required.label}'),
           const SizedBox(height: 10),
           if (recording) ...[
