@@ -110,17 +110,23 @@ class BetRow extends StatelessWidget {
                   width: metaTierW,
                   child: Align(alignment: Alignment.centerRight, child: _tierChip(bet.tier)),
                 ),
+                const SizedBox(width: 4),
+                // Schloss direkt hinter dem Tier (nur bei gesperrten Pots).
+                SizedBox(
+                  width: 14,
+                  child: locked
+                      ? const Icon(Icons.lock_outline, color: AppColors.textMuted, size: 13)
+                      : const SizedBox.shrink(),
+                ),
                 // Meta-Gruppe (Sportart + Tier) um 25vw nach links; Bookmark bleibt rechts.
                 SizedBox(width: MediaQuery.of(context).size.width * 0.25),
                 SizedBox(
                   width: bookmarkColWidth,
                   child: Align(
                     alignment: Alignment.centerRight,
-                    child: locked
-                        ? const Icon(Icons.lock_outline, color: AppColors.textMuted, size: 15)
-                        : bet.bookmarked
-                            ? const Icon(Icons.bookmark, color: AppColors.orange, size: 15)
-                            : const SizedBox.shrink(),
+                    child: bet.bookmarked
+                        ? const Icon(Icons.bookmark, color: AppColors.orange, size: 15)
+                        : const SizedBox.shrink(),
                   ),
                 ),
               ],
