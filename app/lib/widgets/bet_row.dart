@@ -51,13 +51,13 @@ class BetRow extends StatelessWidget {
         final locked = !bet.tier.allows(userSession.tier);
         return Opacity(
           opacity: locked ? 0.4 : 1.0,
-          child: _content(locked),
+          child: _content(context, locked),
         );
       },
     );
   }
 
-  Widget _content(bool locked) {
+  Widget _content(BuildContext context, bool locked) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
       child: Column(
@@ -110,7 +110,8 @@ class BetRow extends StatelessWidget {
                   width: metaTierW,
                   child: Align(alignment: Alignment.centerRight, child: _tierChip(bet.tier)),
                 ),
-                const SizedBox(width: 8),
+                // Meta-Gruppe (Sportart + Tier) um 25vw nach links; Bookmark bleibt rechts.
+                SizedBox(width: MediaQuery.of(context).size.width * 0.25),
                 SizedBox(
                   width: bookmarkColWidth,
                   child: Align(
