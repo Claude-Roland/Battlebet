@@ -38,6 +38,11 @@ class BetRow extends StatelessWidget {
   // (identisch in Kopfzeile und Datenzeile, damit beide fluchten).
   static const double colGap = 8;
 
+  // Breite der rechtsbuendigen Meta-Spalten der Ueberzeile (Sportart, Tier).
+  // Bewusst ANDERS als das Zahlenraster darunter, damit die Ueberzeile versetzt liegt.
+  static const double metaSportW = 62;
+  static const double metaTierW = 72;
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
@@ -63,9 +68,35 @@ class BetRow extends StatelessWidget {
             padding: const EdgeInsets.only(left: iconColWidth, bottom: 3),
             child: Row(
               children: [
-                Flexible(
+                // Name (erste Spalte, flexibel) + optionaler Tag.
+                Expanded(
+                  child: Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          bet.name,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 11,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ),
+                      if (bet.tag != BetTag.none) ...[
+                        const SizedBox(width: 6),
+                        _tagChip(bet.tag),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Rechtsbuendige Meta-Spalten (fluchten ueber alle Zeilen).
+                SizedBox(
+                  width: metaSportW,
                   child: Text(
-                    '${bet.name}    ${bet.sport.label}',
+                    bet.sport.label,
+                    textAlign: TextAlign.right,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       color: AppColors.textMuted,
@@ -74,19 +105,22 @@ class BetRow extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (bet.tag != BetTag.none) ...[
-                  const SizedBox(width: 6),
-                  _tagChip(bet.tag),
-                ],
-                const SizedBox(width: 6),
-                _tierChip(bet.tier),
-                const Spacer(),
-                Icon(
-                  locked ? Icons.lock_outline : (bet.bookmarked ? Icons.bookmark : Icons.bookmark_border),
-                  color: locked
-                      ? AppColors.textMuted
-                      : (bet.bookmarked ? AppColors.orange : AppColors.textMuted),
-                  size: 15,
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: metaTierW,
+                  child: Align(alignment: Alignment.centerRight, child: _tierChip(bet.tier)),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: bookmarkColWidth,
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: locked
+                        ? const Icon(Icons.lock_outline, color: AppColors.textMuted, size: 15)
+                        : bet.bookmarked
+                            ? const Icon(Icons.bookmark, color: AppColors.orange, size: 15)
+                            : const SizedBox.shrink(),
+                  ),
                 ),
               ],
             ),
