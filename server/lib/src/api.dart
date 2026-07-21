@@ -62,7 +62,7 @@ Future<Map<String, dynamic>?> authed(RequestContext context) async {
   if (token == null) return null;
   final res = await db.execute(
     Sql.named('''
-      SELECT u.id, u.username, u.display_name, u.tier,
+      SELECT u.id, u.username, u.display_name, u.tier, u.is_staff,
              w.balance_minor, w.currency, w.is_test
       FROM sessions s
       JOIN users u ON u.id = s.user_id
@@ -73,6 +73,14 @@ Future<Map<String, dynamic>?> authed(RequestContext context) async {
   );
   if (res.isEmpty) return null;
   return res.first.toColumnMap();
+}
+
+/// Wie [authed], aber nur fuer Personal (is_staff = true). Sonst null.
+Future<Map<String, dynamic>?> authedStaff(RequestContext context) async {
+  final me = await authed(context);
+  if (me == null) return null;
+  final staff = (me['is_staff'] as bool?) ?? false;
+  return staff ? me : null;
 }
 
 const _tierLabels = ['Bet Tier 1', 'Bet Tier 2', 'Bet Tier 3'];
@@ -93,6 +101,7 @@ Map<String, dynamic> profileJson(Map<String, dynamic> row) => {
         'displayName': _displayName(row),
         'tier': (row['tier'] as num).toInt(),
         'tierLabel': tierLabel((row['tier'] as num).toInt()),
+        'isStaff': (row['is_staff'] as bool?) ?? false,
       },
       'wallet': walletJson(row),
     };

@@ -17,7 +17,7 @@ Future<Response> onRequest(RequestContext context) async {
 
   final res = await db.execute(
     Sql.named('''
-      SELECT u.id, u.username, u.display_name, u.tier, u.password_hash,
+      SELECT u.id, u.username, u.display_name, u.tier, u.password_hash, u.is_staff,
              w.balance_minor, w.currency, w.is_test
       FROM users u
       JOIN wallets w ON w.user_id = u.id AND w.currency = 'EUR'
