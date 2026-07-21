@@ -14,7 +14,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import '../data/my_bets_store.dart';
+import '../data/api_client.dart';
 import '../data/user_session.dart';
 import '../models/bet.dart';
 import '../models/bet_economics.dart';
@@ -23,7 +23,6 @@ import '../theme/app_theme.dart';
 import '../widgets/digital_countdown.dart';
 import '../widgets/groove_divider.dart';
 import '../widgets/value_chart.dart';
-import 'my_bets_screen.dart';
 
 /// Gruen fuer den "bereits platziert"-Zustand (wie in my_bets_screen).
 const _joinedGreen = Color(0xFF6FBF3B);
@@ -173,9 +172,9 @@ class BetDetailScreen extends StatelessWidget {
           _kv('pot type', potType),
           const SizedBox(height: 18),
           AnimatedBuilder(
-            animation: Listenable.merge([myBetsStore, userSession]),
+            animation: userSession,
             builder: (context, _) {
-              final joined = myBetsStore.hasJoined(bet);
+              final joined = bet.joined;
               final eligible = bet.tier.allows(userSession.tier);
               final full = bet.economics.isFull;
               return SizedBox(
@@ -213,11 +212,9 @@ class BetDetailScreen extends StatelessWidget {
         shape: const StadiumBorder(),
         side: const BorderSide(color: _joinedGreen, width: 1.5),
       ),
-      onPressed: () => Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const MyBetsScreen()),
-      ),
+      onPressed: () => Navigator.of(context).pop(),
       icon: const Icon(Icons.check_circle, color: _joinedGreen, size: 20),
-      label: const Text('placed · view in My Bets',
+      label: const Text('placed',
           style: TextStyle(color: _joinedGreen, fontSize: 15, fontWeight: FontWeight.w700)),
     );
   }
@@ -278,13 +275,24 @@ class BetDetailScreen extends StatelessWidget {
     );
   }
 
-  void _join(BuildContext context) {
+  Future<void> _join(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
-    myBetsStore.add(bet);
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const MyBetsScreen()),
-    );
-    messenger.showSnackBar(const SnackBar(content: Text('Bet successfully placed')));
+    final navigator = Navigator.of(context);
+    if (bet.id == null) {
+      messenger.showSnackBar(
+          const SnackBar(content: Text('This bet is not on the server.')));
+      return;
+    }
+    try {
+      await api.joinBet(bet.id!);
+      messenger.showSnackBar(const SnackBar(content: Text('Bet placed')));
+      navigator.pop();
+    } on ApiException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (_) {
+      messenger.showSnackBar(
+          const SnackBar(content: Text('Could not reach the server.')));
+    }
   }
 
   Widget _confirmRow(String label, String value, {Color valueColor = AppColors.textPrimary}) {

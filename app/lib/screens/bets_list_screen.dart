@@ -12,7 +12,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
-import '../data/sample_bets.dart';
+import '../data/api_client.dart';
 import '../models/bet.dart';
 import '../theme/app_theme.dart';
 import '../widgets/bet_row.dart';
@@ -58,6 +58,43 @@ class _BetsListScreenState extends State<BetsListScreen> {
   int _minStake = 0;
   int _minFreq = 1;
 
+  List<Bet> _bets = [];
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final bets = await api.listBets();
+      if (!mounted) return;
+      setState(() {
+        _bets = bets;
+        _loading = false;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.message;
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'Cannot reach the server.';
+        _loading = false;
+      });
+    }
+  }
+
   void _onSort(BetSortKey key) {
     setState(() {
       if (_key == key) {
@@ -72,7 +109,7 @@ class _BetsListScreenState extends State<BetsListScreen> {
   int _cmp(Bet a, Bet b) {
     switch (_key) {
       case BetSortKey.neu:
-        return a.createdSeq.compareTo(b.createdSeq);
+        return (a.createdAt ?? DateTime(1970)).compareTo(b.createdAt ?? DateTime(1970));
       case BetSortKey.distanz:
         return a.distanceKm.compareTo(b.distanceKm);
       case BetSortKey.interval:
@@ -87,7 +124,7 @@ class _BetsListScreenState extends State<BetsListScreen> {
   }
 
   List<Bet> get _visibleBets {
-    final list = sampleBets
+    final list = _bets
         .where((b) =>
             (_filterSport == null || b.sport == _filterSport) &&
             b.distanceKm >= _minDist &&
@@ -108,9 +145,11 @@ class _BetsListScreenState extends State<BetsListScreen> {
             activeIndex: 0,
             onTap: (i) {
               if (i == 1) {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const CreateBetScreen()),
-                );
+                Navigator.of(context)
+                    .push(MaterialPageRoute(builder: (_) => const CreateBetScreen()))
+                    .then((_) {
+                  if (mounted) _load();
+                });
               } else if (i == 2) {
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const MyBetsScreen()),
@@ -121,18 +160,25 @@ class _BetsListScreenState extends State<BetsListScreen> {
           _filterRow(),
           _sortHeader(),
           Expanded(
-            child: bets.isEmpty
-                ? _emptyFilter()
-                : ListView.separated(
-                    itemCount: bets.length,
-                    separatorBuilder: (context, i) => const GrooveDivider(),
-                    itemBuilder: (context, i) => InkWell(
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => BetDetailScreen(bet: bets[i])),
-                      ),
-                      child: BetRow(bet: bets[i]),
-                    ),
-                  ),
+            child: _loading
+                ? const Center(child: CircularProgressIndicator(color: AppColors.orange))
+                : _error != null
+                    ? _errorView()
+                    : bets.isEmpty
+                        ? _emptyFilter()
+                        : ListView.separated(
+                            itemCount: bets.length,
+                            separatorBuilder: (context, i) => const GrooveDivider(),
+                            itemBuilder: (context, i) => InkWell(
+                              onTap: () => Navigator.of(context)
+                                  .push(MaterialPageRoute(
+                                      builder: (_) => BetDetailScreen(bet: bets[i])))
+                                  .then((_) {
+                                if (mounted) _load();
+                              }),
+                              child: BetRow(bet: bets[i]),
+                            ),
+                          ),
           ),
         ],
       ),
@@ -408,6 +454,37 @@ class _BetsListScreenState extends State<BetsListScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _errorView() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_off_outlined, color: AppColors.textMuted, size: 40),
+            const SizedBox(height: 12),
+            Text(_error ?? 'Error',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.textMuted, fontSize: 14)),
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: _load,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: AppColors.orange),
+                ),
+                child: const Text('Retry',
+                    style: TextStyle(color: AppColors.orange, fontSize: 13, fontWeight: FontWeight.w700)),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

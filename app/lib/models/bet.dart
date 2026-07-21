@@ -48,6 +48,16 @@ class Bet {
     this.tag = BetTag.none,
     this.bookmarked = false,
     this.createdSeq = 0,
+    this.id,
+    this.status = 1,
+    this.joined = false,
+    this.myState,
+    this.createdAt,
+    this.startsAt,
+    this.endsAt,
+    this.entryClosesAt,
+    this.realStarters,
+    this.minParticipants = 3,
   });
 
   final String name;
@@ -72,6 +82,49 @@ class Bet {
   /// Zeitstempel; heute treibt er nur die „Neu"-Sortierung der Liste. Der Server
   /// ersetzt das spaeter durch die echte Erstellzeit.
   final int createdSeq;
+
+  // --- Server-Felder (null/Default bei lokalen Wetten) ---
+  final String? id;
+  final int status; // 0=gathering,1=running,2=resolved,3=cancelled
+  final bool joined;
+  final int? myState;
+  final DateTime? createdAt;
+  final DateTime? startsAt;
+  final DateTime? endsAt;
+  final DateTime? entryClosesAt;
+  final int? realStarters;
+  final int minParticipants;
+
+  /// Baut eine Bet aus der Server-JSON.
+  factory Bet.fromJson(Map<String, dynamic> j) {
+    final si = (j['sport'] as num?)?.toInt() ?? 0;
+    final ti = (j['tier'] as num?)?.toInt() ?? 0;
+    final gi = (j['tag'] as num?)?.toInt() ?? 0;
+    DateTime? p(Object? v) => v is String ? DateTime.tryParse(v)?.toLocal() : null;
+    return Bet(
+      id: j['id'] as String?,
+      name: (j['name'] as String?) ?? '',
+      sport: (si >= 0 && si < Sport.values.length) ? Sport.values[si] : Sport.jogging,
+      distanceKm: (j['distanceKm'] as num?)?.toDouble() ?? 0,
+      iterationsPerWeek: (j['iterationsPerWeek'] as num?)?.toInt() ?? 1,
+      expirationDays: (j['expirationDays'] as num?)?.toInt() ?? 7,
+      stake: Money((j['stakeMinor'] as num?)?.toInt() ?? 0, (j['currency'] as String?) ?? 'EUR'),
+      tier: (ti >= 0 && ti < PotTier.values.length) ? PotTier.values[ti] : PotTier.limited,
+      feeBps: (j['feeBps'] as num?)?.toInt() ?? 1000,
+      starters: (j['starters'] as num?)?.toInt() ?? 1,
+      dropouts: (j['dropouts'] as num?)?.toInt() ?? 0,
+      tag: (gi >= 0 && gi < BetTag.values.length) ? BetTag.values[gi] : BetTag.none,
+      status: (j['status'] as num?)?.toInt() ?? 1,
+      joined: (j['joined'] as bool?) ?? false,
+      myState: (j['myState'] as num?)?.toInt(),
+      createdAt: p(j['createdAt']),
+      startsAt: p(j['startsAt']),
+      endsAt: p(j['endsAt']),
+      entryClosesAt: p(j['entryClosesAt']),
+      realStarters: (j['realStarters'] as num?)?.toInt(),
+      minParticipants: (j['minParticipants'] as num?)?.toInt() ?? 3,
+    );
+  }
 
   /// Fester Topf-Deckel aus dem Pot-Typ (null = unbegrenzt).
   Money? get potCap => tier.capIn(stake.currency);

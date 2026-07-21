@@ -6,6 +6,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../models/bet.dart';
 import '../models/money.dart';
 
 /// Basis-URL des Servers. Lokal: der Dart-Frog-Dev-Server auf Port 8081.
@@ -158,6 +159,57 @@ class ApiClient {
     final d = await _post('/wallet/withdraw', {'amountMinor': amountMinor});
     final w = d['wallet'] as Map<String, dynamic>;
     return Money((w['balanceMinor'] as num).toInt(), w['currency'] as String);
+  }
+
+  /// Alle Wetten vom Server (mit Oekonomie, joined-Markierung).
+  Future<List<Bet>> listBets() async {
+    final d = await _get('/bets');
+    final list = (d['bets'] as List?) ?? const [];
+    return list.map((e) => Bet.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<Bet> getBet(String id) async => Bet.fromJson(await _get('/bets/$id'));
+
+  Future<Bet> createBet({
+    required String name,
+    required int sport,
+    required double distanceKm,
+    required int iterationsPerWeek,
+    required int expirationDays,
+    required int stakeMinor,
+    required String currency,
+    required int tier,
+  }) async {
+    final d = await _post('/bets', {
+      'name': name,
+      'sport': sport,
+      'distanceKm': distanceKm,
+      'iterationsPerWeek': iterationsPerWeek,
+      'expirationDays': expirationDays,
+      'stakeMinor': stakeMinor,
+      'currency': currency,
+      'tier': tier,
+    });
+    return Bet.fromJson(d);
+  }
+
+  Future<Bet> joinBet(String id) async => Bet.fromJson(await _post('/bets/$id/join', {}));
+
+  /// Einen (eigenstaendigen) Lauf aufnehmen; der Server ordnet ihn passenden Wetten zu.
+  Future<void> recordRun({
+    required int sport,
+    required int source,
+    required int totalMeters,
+    required int totalSeconds,
+    required int avgPace,
+  }) async {
+    await _post('/runs', {
+      'sport': sport,
+      'source': source,
+      'totalMeters': totalMeters,
+      'totalSeconds': totalSeconds,
+      'avgPace': avgPace,
+    });
   }
 
   void logout() => token = null;

@@ -12,14 +12,13 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import '../data/my_bets_store.dart';
+import '../data/api_client.dart';
 import '../data/user_session.dart';
 import '../models/bet.dart';
 import '../models/money.dart';
 import '../models/tiers.dart';
 import '../theme/app_theme.dart';
 import '../widgets/top_nav.dart';
-import 'my_bets_screen.dart';
 
 class CreateBetScreen extends StatefulWidget {
   const CreateBetScreen({super.key});
@@ -293,20 +292,30 @@ class _CreateBetScreenState extends State<CreateBetScreen> {
 
   // Wette aus der Auswahl bauen, in My Bets ablegen und dorthin wechseln.
   // Neuer Pot: nur der Ersteller (starters = 1, dropouts = 0, Standard-Fee).
-  void _place() {
-    final bet = Bet(
-      name: '$_verb ${_fmtKm(_distance)}km',
-      sport: _sport,
-      distanceKm: _distance,
-      iterationsPerWeek: _freq,
-      expirationDays: _week * 7,
-      stake: Money.of(_price, _currency),
-      tier: _tier,
-    );
-    myBetsStore.add(bet);
+  Future<void> _place() async {
     final messenger = ScaffoldMessenger.of(context);
-    Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const MyBetsScreen()));
-    messenger.showSnackBar(const SnackBar(content: Text('Bet successfully placed')));
+    final navigator = Navigator.of(context);
+    try {
+      await api.createBet(
+        name: '$_verb ${_fmtKm(_distance)}km',
+        sport: _sport.index,
+        distanceKm: _distance,
+        iterationsPerWeek: _freq,
+        expirationDays: _week * 7,
+        stakeMinor: _price * 100,
+        currency: _currency,
+        tier: _tier.index,
+      );
+      if (!mounted) return;
+      navigator.pop();
+      messenger.showSnackBar(const SnackBar(content: Text('Bet created')));
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (_) {
+      if (!mounted) return;
+      messenger.showSnackBar(const SnackBar(content: Text('Could not reach the server.')));
+    }
   }
 
   /// Eine beschriftete Walze (WheelPicker) mit dezentem orangem Auswahlband.
