@@ -18,9 +18,9 @@ enum UserTier { bronze, silber, obsidian }
 
 extension UserTierX on UserTier {
   String get label => switch (this) {
-        UserTier.bronze => 'Bet Tier 1',
-        UserTier.silber => 'Bet Tier 2',
-        UserTier.obsidian => 'Bet Tier 3',
+        UserTier.bronze => 'Tier 1',
+        UserTier.silber => 'Tier 2',
+        UserTier.obsidian => 'Unlimited',
       };
   int get rank => index;
 
@@ -54,23 +54,23 @@ extension PotTierX on PotTier {
 
   /// Anzeigename: Bet-Tier-Nummer + Deckel-Gefuehl (EN-Basis).
   String get label => switch (this) {
-        PotTier.limited => 'Bet Tier 1 · Limited 500',
-        PotTier.limitedLarge => 'Bet Tier 2 · Limited 2000',
-        PotTier.unlimited => 'Bet Tier 3 · open',
+        PotTier.limited => 'Tier 1 · up to 500',
+        PotTier.limitedLarge => 'Tier 2 · up to 2000',
+        PotTier.unlimited => 'Unlimited',
       };
 
   /// Kurzform fuer enge Stellen (Listen-Zeile).
   String get shortLabel => switch (this) {
         PotTier.limited => 'Tier 1',
         PotTier.limitedLarge => 'Tier 2',
-        PotTier.unlimited => 'Tier 3',
+        PotTier.unlimited => 'Unlimited',
       };
 
   /// Kurz-Zugangshinweis fuer die Legende (EN-Basis).
   String get accessNote => switch (this) {
         PotTier.limited => 'open to all',
-        PotTier.limitedLarge => 'from Bet Tier 2',
-        PotTier.unlimited => 'from Bet Tier 3',
+        PotTier.limitedLarge => 'from Tier 2',
+        PotTier.unlimited => 'Unlimited tier only',
       };
 
   /// Der Deckel als Money in der gewuenschten Waehrung; null bei unbegrenzt.

@@ -13,11 +13,11 @@ int? potCapMajor(int tier) => switch (tier) {
     };
 
 const _potTierLabels = [
-  'Bet Tier 1 · Limited 500',
-  'Bet Tier 2 · Limited 2000',
-  'Bet Tier 3 · open',
+  'Tier 1 · up to 500',
+  'Tier 2 · up to 2000',
+  'Unlimited',
 ];
-const _potTierShort = ['Tier 1', 'Tier 2', 'Tier 3'];
+const _potTierShort = ['Tier 1', 'Tier 2', 'Unlimited'];
 const _phases = ['gathering', 'running', 'resolved', 'cancelled'];
 int _clamp(int v, int max) => v < 0 ? 0 : (v > max ? max : v);
 String potTierLabel(int t) => _potTierLabels[_clamp(t, 2)];

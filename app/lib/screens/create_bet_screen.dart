@@ -19,6 +19,7 @@ import '../models/money.dart';
 import '../models/tiers.dart';
 import '../theme/app_theme.dart';
 import '../widgets/top_nav.dart';
+import 'my_bets_screen.dart';
 
 class CreateBetScreen extends StatefulWidget {
   const CreateBetScreen({super.key});
@@ -135,7 +136,17 @@ class _CreateBetScreenState extends State<CreateBetScreen> {
         child: SingleChildScrollView(
           child: Column(
             children: [
-              TopNav(activeIndex: 1, onTap: (i) { if (i == 0) Navigator.of(context).maybePop(); }),
+              TopNav(
+                activeIndex: 1,
+                onTap: (i) {
+                  if (i == 0) {
+                    Navigator.of(context).maybePop();
+                  } else if (i == 2) {
+                    Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const MyBetsScreen()));
+                  }
+                },
+              ),
               const SizedBox(height: 10),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),

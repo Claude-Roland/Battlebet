@@ -91,7 +91,7 @@ class BetDetailScreen extends StatelessWidget {
                 child: const Icon(Icons.arrow_back, color: Colors.white),
               ),
               const Spacer(),
-              const Icon(Icons.public, color: Colors.white, size: 22),
+              SvgPicture.asset('assets/icons/Globus.svg', height: 22),
             ],
           ),
           const SizedBox(height: 4),
