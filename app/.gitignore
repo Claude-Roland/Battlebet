@@ -7,7 +7,7 @@ pubspec.lock
 # Generierte Plattform-Ordner (via `flutter create .`)
 /android/
 /ios/
-/web/
+# /web/ wird BEWUSST versioniert (Web ist Deploy-Ziel; CI baut daraus)
 /macos/
 /linux/
 /windows/
