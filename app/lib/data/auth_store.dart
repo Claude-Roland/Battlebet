@@ -1,43 +1,47 @@
-// Einfache Anmeldung/Registrierung (Katalog-Entität `User`).
-// MVP: rein im Arbeitsspeicher (kein Backend, keine Persistenz, kein Hashing —
-// kommt später). Hält die registrierten Nutzer und den aktuell angemeldeten.
+// Server-gestuetzte Anmeldung/Registrierung (echte Konten).
+// Ersetzt den frueheren lokalen Platzhalter; das Token haelt der ApiClient.
+// Nach Erfolg wird das Server-Profil in den profileStore uebernommen.
 
 import 'package:flutter/foundation.dart';
 
+import 'api_client.dart';
+import 'profile_store.dart';
+
 class AuthStore extends ChangeNotifier {
-  final Map<String, String> _users = {}; // username -> passwort (MVP-Platzhalter)
   String? _currentUser;
 
   String? get currentUser => _currentUser;
-  bool get isLoggedIn => _currentUser != null;
+  bool get isLoggedIn => api.isLoggedIn;
 
-  /// Registriert einen neuen Nutzer. Rückgabe: Fehlermeldung oder null bei Erfolg.
-  String? register(String username, String password) {
-    final u = username.trim();
-    if (u.isEmpty || password.isEmpty) return 'Please enter username and password.';
-    if (_users.containsKey(u)) return 'This username is already taken.';
-    _users[u] = password;
-    _currentUser = u;
-    notifyListeners();
-    return null;
-  }
+  /// Registriert. Rueckgabe: Fehlermeldung oder null bei Erfolg.
+  Future<String?> register(String username, String password) =>
+      _run(() => api.register(username.trim(), password));
 
-  /// Meldet einen Nutzer an. Rückgabe: Fehlermeldung oder null bei Erfolg.
-  String? login(String username, String password) {
-    final u = username.trim();
-    if (u.isEmpty || password.isEmpty) return 'Please enter username and password.';
-    if (!_users.containsKey(u)) return 'No account with this username.';
-    if (_users[u] != password) return 'Wrong password.';
-    _currentUser = u;
-    notifyListeners();
-    return null;
+  /// Meldet an. Rueckgabe: Fehlermeldung oder null bei Erfolg.
+  Future<String?> login(String username, String password) =>
+      _run(() => api.login(username.trim(), password));
+
+  Future<String?> _run(Future<AuthResult> Function() action) async {
+    try {
+      final result = await action();
+      _currentUser = result.profile.username;
+      profileStore.applyProfile(result.profile);
+      notifyListeners();
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    } catch (_) {
+      return 'Unexpected error. Please try again.';
+    }
   }
 
   void logout() {
+    api.logout();
     _currentUser = null;
+    profileStore.clear();
     notifyListeners();
   }
 }
 
-/// Globale Instanz für den MVP (später durch echte Auth/Backend ersetzt).
+/// Globale Instanz.
 final authStore = AuthStore();

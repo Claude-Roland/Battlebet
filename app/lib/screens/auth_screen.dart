@@ -20,6 +20,7 @@ class _AuthScreenState extends State<AuthScreen> {
   // true = Registrieren (neues Konto), false = Anmelden (bestehendes Konto).
   bool _register = true;
   bool _obscure = true;
+  bool _busy = false;
 
   final _userCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
@@ -40,13 +41,24 @@ class _AuthScreenState extends State<AuthScreen> {
     });
   }
 
-  void _submit() {
+  Future<void> _submit() async {
+    if (_busy) return;
     final user = _userCtrl.text;
     final pass = _passCtrl.text;
-    // authStore gibt eine Fehlermeldung zurück oder null bei Erfolg.
-    final err = _register ? authStore.register(user, pass) : authStore.login(user, pass);
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    // authStore spricht mit dem Server; Fehlermeldung oder null bei Erfolg.
+    final err = _register
+        ? await authStore.register(user, pass)
+        : await authStore.login(user, pass);
+    if (!mounted) return;
     if (err != null) {
-      setState(() => _error = err);
+      setState(() {
+        _error = err;
+        _busy = false;
+      });
       return;
     }
     // Erfolg: rein in die App, Onboarding aus dem Stack nehmen.
@@ -119,8 +131,15 @@ class _AuthScreenState extends State<AuthScreen> {
                           shape: const StadiumBorder(),
                           textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                         ),
-                        onPressed: _submit,
-                        child: Text(_register ? 'Create account' : 'Log in'),
+                        onPressed: _busy ? null : _submit,
+                        child: _busy
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: Colors.white),
+                              )
+                            : Text(_register ? 'Create account' : 'Log in'),
                       ),
                     ),
                     const SizedBox(height: 16),

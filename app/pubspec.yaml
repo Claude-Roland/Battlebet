@@ -10,6 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_svg: ^2.0.10 # rendert die SVG-Icons (Jogger, Renner ...)
+  http: ^1.2.0 # HTTP-Client zum BattleBet-Server
 
 dev_dependencies:
   flutter_test:

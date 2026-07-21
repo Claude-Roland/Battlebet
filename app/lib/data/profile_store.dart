@@ -1,48 +1,90 @@
-// Profil-Daten des Nutzers (MVP: simuliert, rein im Arbeitsspeicher).
-//
-// - GUTHABEN (Wallet): kann ein- und ausgezahlt werden. HEUTE SIMULIERT — echtes
-//   Geld kommt mit dem Server (regulierter Bereich). Der Wechsel ist nur ein
-//   Austausch der Datenquelle, kein Umbau.
-// - ANZEIGENAME (Personalisierung): ueberschreibt den Login-Namen fuer die Anzeige.
-//
-// ChangeNotifier -> die Profil-Seite aktualisiert sich bei jeder Aenderung.
+// Profil-Daten (Guthaben in Test-Credits, Anzeigename, Bet-Tier) — Server = Wahrheit.
+// Wird nach Login/Registrierung mit dem Server-Profil gefuellt; Ein-/Auszahlen und
+// Namensaenderung laufen ueber den Server. Test-Credits, bis die echte Geld-Schicht
+// kommt (dann nur ein Austausch der Datenquelle, kein Umbau).
 
 import 'package:flutter/foundation.dart';
 
 import '../models/money.dart';
+import 'api_client.dart';
 
 class ProfileStore extends ChangeNotifier {
-  Money _balance = Money.of(100, 'EUR'); // Startguthaben (simuliert)
+  Money _balance = const Money(0, 'EUR');
   String _name = ''; // Anzeigename; leer -> Login-Name verwenden
+  int _tier = 0;
+  String _tierLabel = 'Bet Tier 1';
+  bool _isTest = true;
 
   Money get balance => _balance;
-
-  /// Frei gewaehlter Anzeigename (leer = keiner gesetzt).
   String get customName => _name;
+  int get tier => _tier;
+  String get tierLabel => _tierLabel;
+  bool get isTest => _isTest;
 
   /// Anzeigename mit Rueckfall auf den Login-Namen.
-  String displayName(String fallback) => _name.trim().isEmpty ? fallback : _name.trim();
+  String displayName(String fallback) =>
+      _name.trim().isEmpty ? fallback : _name.trim();
 
-  void setName(String name) {
-    _name = name.trim();
+  /// Uebernimmt ein frisches Server-Profil.
+  void applyProfile(Profile p) {
+    _balance = p.balance;
+    _name = p.displayName == p.username ? '' : p.displayName;
+    _tier = p.tier;
+    _tierLabel = p.tierLabel;
+    _isTest = p.walletIsTest;
     notifyListeners();
   }
 
-  /// Einzahlen (simuliert): ganze Waehrungseinheiten draufbuchen.
-  void deposit(int amount) {
-    if (amount <= 0) return;
-    _balance = Money(_balance.minor + amount * 100, _balance.currency);
+  /// Zuruecksetzen beim Abmelden.
+  void clear() {
+    _balance = const Money(0, 'EUR');
+    _name = '';
+    _tier = 0;
+    _tierLabel = 'Bet Tier 1';
+    _isTest = true;
     notifyListeners();
   }
 
-  /// Auszahlen (simuliert): abbuchen, nie unter 0.
-  void withdraw(int amount) {
-    if (amount <= 0) return;
-    final m = _balance.minor - amount * 100;
-    _balance = Money(m < 0 ? 0 : m, _balance.currency);
-    notifyListeners();
+  /// Anzeigename setzen (Server), dann lokal uebernehmen.
+  Future<String?> setName(String name) async {
+    try {
+      applyProfile(await api.setDisplayName(name.trim()));
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    } catch (_) {
+      return 'Could not save the name.';
+    }
+  }
+
+  /// Einzahlen (ganze Waehrungseinheiten -> Cent) via Server.
+  Future<String?> deposit(int amountMajor) async {
+    if (amountMajor <= 0) return null;
+    try {
+      _balance = await api.deposit(amountMajor * 100);
+      notifyListeners();
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    } catch (_) {
+      return 'Deposit failed.';
+    }
+  }
+
+  /// Auszahlen (ganze Waehrungseinheiten -> Cent) via Server.
+  Future<String?> withdraw(int amountMajor) async {
+    if (amountMajor <= 0) return null;
+    try {
+      _balance = await api.withdraw(amountMajor * 100);
+      notifyListeners();
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    } catch (_) {
+      return 'Withdrawal failed.';
+    }
   }
 }
 
-/// Globale Instanz fuer den MVP (spaeter durch echtes Konto/Server ersetzt).
+/// Globale Instanz.
 final profileStore = ProfileStore();

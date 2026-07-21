@@ -146,7 +146,7 @@ class ProfileScreen extends StatelessWidget {
           Text(profileStore.balance.format(),
               style: const TextStyle(color: AppColors.textPrimary, fontSize: 34, fontWeight: FontWeight.w800)),
           const SizedBox(height: 2),
-          const Text('simulated · real money comes with the server',
+          const Text('test credits · real money comes later',
               style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
           const SizedBox(height: 14),
           Row(
@@ -359,9 +359,14 @@ class ProfileScreen extends StatelessWidget {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.orange, shape: const StadiumBorder()),
-            onPressed: () {
-              profileStore.setName(ctrl.text);
-              Navigator.of(ctx).pop();
+            onPressed: () async {
+              final messenger = ScaffoldMessenger.of(context);
+              final navigator = Navigator.of(ctx);
+              final err = await profileStore.setName(ctrl.text);
+              navigator.pop();
+              if (err != null) {
+                messenger.showSnackBar(SnackBar(content: Text(err)));
+              }
             },
             child: const Text('save', style: TextStyle(color: Colors.white)),
           ),
@@ -418,14 +423,17 @@ class ProfileScreen extends StatelessWidget {
                 height: 50,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(backgroundColor: AppColors.orange, shape: const StadiumBorder()),
-                  onPressed: () {
+                  onPressed: () async {
                     final a = amounts[idx];
-                    if (deposit) {
-                      profileStore.deposit(a);
-                    } else {
-                      profileStore.withdraw(a);
+                    final messenger = ScaffoldMessenger.of(context);
+                    final navigator = Navigator.of(ctx);
+                    final err = deposit
+                        ? await profileStore.deposit(a)
+                        : await profileStore.withdraw(a);
+                    navigator.pop();
+                    if (err != null) {
+                      messenger.showSnackBar(SnackBar(content: Text(err)));
                     }
-                    Navigator.of(ctx).pop();
                   },
                   child: const Text('confirm',
                       style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
