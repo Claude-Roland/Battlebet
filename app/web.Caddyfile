@@ -1,0 +1,9 @@
+# Interner Static-Server fuer das Flutter-Web-Bundle (Port 80).
+# Der Edge-Caddy (Stack /opt/n8n) proxyt battlebet.app -> dieser Container.
+:80 {
+	root * /srv
+	encode gzip
+	# SPA-Fallback: unbekannte Pfade auf index.html (Flutter-Web).
+	try_files {path} /index.html
+	file_server
+}

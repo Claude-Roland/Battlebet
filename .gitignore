@@ -6,3 +6,8 @@ node_modules/
 
 # Papierkorb-Ordner
 _zum_loeschen/
+
+# Server-/Deploy-Doku wird im Admin-Projekt gepflegt (oeffentliches Repo)
+/Server-Einrichtung/
+/BATTLEBET_SERVER_Zusammenfassung.md
+/HANDOFF_von_Admin_2026-07-21.md
