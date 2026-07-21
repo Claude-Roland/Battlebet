@@ -6,12 +6,19 @@ import 'package:flutter/foundation.dart';
 
 import 'api_client.dart';
 import 'profile_store.dart';
+import 'session_store.dart';
 
 class AuthStore extends ChangeNotifier {
   String? _currentUser;
 
   String? get currentUser => _currentUser;
   bool get isLoggedIn => api.isLoggedIn;
+
+  /// Nach automatischem Login (gemerktes Geraet) den Nutzernamen setzen.
+  void restore(String username) {
+    _currentUser = username;
+    notifyListeners();
+  }
 
   /// Registriert. Rueckgabe: Fehlermeldung oder null bei Erfolg.
   Future<String?> register(String username, String password) =>
@@ -39,6 +46,7 @@ class AuthStore extends ChangeNotifier {
     api.logout();
     _currentUser = null;
     profileStore.clear();
+    sessionStore.clear();
     notifyListeners();
   }
 }

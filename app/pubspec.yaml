@@ -11,6 +11,7 @@ dependencies:
     sdk: flutter
   flutter_svg: ^2.0.10 # rendert die SVG-Icons (Jogger, Renner ...)
   http: ^1.2.0 # HTTP-Client zum BattleBet-Server
+  shared_preferences: ^2.2.0 # merkt das Token fuer "dieses Geraet merken"
 
 dev_dependencies:
   flutter_test:

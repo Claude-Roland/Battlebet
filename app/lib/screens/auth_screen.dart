@@ -5,7 +5,9 @@
 
 import 'package:flutter/material.dart';
 
+import '../data/api_client.dart';
 import '../data/auth_store.dart';
+import '../data/session_store.dart';
 import '../theme/app_theme.dart';
 import 'bets_list_screen.dart';
 
@@ -21,6 +23,7 @@ class _AuthScreenState extends State<AuthScreen> {
   bool _register = true;
   bool _obscure = true;
   bool _busy = false;
+  bool _remember = true;
 
   final _userCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
@@ -61,6 +64,12 @@ class _AuthScreenState extends State<AuthScreen> {
       });
       return;
     }
+    if (_remember && api.token != null) {
+      await sessionStore.save(api.token!);
+    } else if (!_remember) {
+      await sessionStore.clear();
+    }
+    if (!mounted) return;
     // Erfolg: rein in die App, Onboarding aus dem Stack nehmen.
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => const BetsListScreen()),
@@ -120,6 +129,30 @@ class _AuthScreenState extends State<AuthScreen> {
                         ],
                       ),
                     ],
+                    Row(
+                      children: [
+                        SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: Checkbox(
+                            value: _remember,
+                            onChanged: (v) => setState(() => _remember = v ?? false),
+                            activeColor: AppColors.orange,
+                            side: const BorderSide(color: AppColors.textMuted),
+                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => setState(() => _remember = !_remember),
+                            child: const Text('Remember this device for 30 days',
+                                style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
                     const SizedBox(height: 28),
                     SizedBox(
                       height: 52,

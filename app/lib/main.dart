@@ -13,17 +13,39 @@
 
 import 'package:flutter/material.dart';
 
-import 'theme/app_theme.dart';
+import 'data/api_client.dart';
+import 'data/auth_store.dart';
+import 'data/profile_store.dart';
+import 'data/session_store.dart';
 import 'screens/auth_screen.dart';
+import 'screens/bets_list_screen.dart';
+import 'theme/app_theme.dart';
 
-void main() {
-  runApp(const BattleBetApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  Widget home = const AuthScreen();
+  final token = await sessionStore.load();
+  if (token != null) {
+    api.token = token;
+    try {
+      final profile = await api.me();
+      profileStore.applyProfile(profile);
+      authStore.restore(profile.username);
+      home = const BetsListScreen();
+    } catch (_) {
+      api.token = null;
+      await sessionStore.clear();
+    }
+  }
+  runApp(BattleBetApp(home: home));
 }
 
 /// Wurzel-Widget der App. Setzt das dunkle BattleBet-Theme und
 /// startet mit dem Onboarding (Anmelden/Registrieren) als Startseite.
 class BattleBetApp extends StatelessWidget {
-  const BattleBetApp({super.key});
+  const BattleBetApp({super.key, required this.home});
+
+  final Widget home;
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +53,7 @@ class BattleBetApp extends StatelessWidget {
       title: 'BattleBet',
       debugShowCheckedModeBanner: false,
       theme: buildBattleBetTheme(),
-      home: const AuthScreen(),
+      home: home,
     );
   }
 }
