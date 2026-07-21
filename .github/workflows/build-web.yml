@@ -1,0 +1,45 @@
+name: build-web
+
+on:
+  push:
+    branches: [ main ]
+    paths: [ 'app/**' ]
+  workflow_dispatch:
+
+concurrency:
+  group: build-web
+  cancel-in-progress: true
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: flutter build web
+        working-directory: app
+        run: |
+          flutter pub get
+          flutter build web --release --dart-define=BB_API=https://api.battlebet.app
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: app
+          file: app/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/claude-roland/battlebet-web:latest
+            ghcr.io/claude-roland/battlebet-web:${{ github.sha }}
