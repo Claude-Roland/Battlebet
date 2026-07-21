@@ -171,23 +171,31 @@ class BetDetailScreen extends StatelessWidget {
           // Pot-Typ = Deckel + Zugang (statt der frueheren "check profile"-Zeile).
           _kv('pot type', potType),
           const SizedBox(height: 18),
-          AnimatedBuilder(
-            animation: userSession,
-            builder: (context, _) {
-              final joined = bet.joined;
-              final eligible = bet.tier.allows(userSession.tier);
-              final full = bet.economics.isFull;
-              return SizedBox(
-                height: 52,
-                child: joined
-                    ? _placedButton(context)
-                    : !eligible
-                        ? _lockedButton('requires ${bet.tier.requires.label} status')
-                        : full
-                            ? _lockedButton('pot full · closed')
-                            : _betButton(context),
-              );
-            },
+          Row(
+            children: [
+              _BookmarkButton(betId: bet.id, initial: bet.bookmarked),
+              const SizedBox(width: 12),
+              Expanded(
+                child: AnimatedBuilder(
+                  animation: userSession,
+                  builder: (context, _) {
+                    final joined = bet.joined;
+                    final eligible = bet.tier.allows(userSession.tier);
+                    final full = bet.economics.isFull;
+                    return SizedBox(
+                      height: 52,
+                      child: joined
+                          ? _placedButton(context)
+                          : !eligible
+                              ? _lockedButton('requires ${bet.tier.requires.label} status')
+                              : full
+                                  ? _lockedButton('pot full · closed')
+                                  : _betButton(context),
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -353,4 +361,56 @@ class BetDetailScreen extends StatelessWidget {
   }
 
   String _fmtKm(double km) => km == km.roundToDouble() ? km.toStringAsFixed(0) : km.toString();
+}
+
+/// Bookmark-Umschalt-Knopf (server-gestuetzt, eigener Zustand).
+class _BookmarkButton extends StatefulWidget {
+  const _BookmarkButton({required this.betId, required this.initial});
+
+  final String? betId;
+  final bool initial;
+
+  @override
+  State<_BookmarkButton> createState() => _BookmarkButtonState();
+}
+
+class _BookmarkButtonState extends State<_BookmarkButton> {
+  late bool _on = widget.initial;
+  bool _busy = false;
+
+  Future<void> _toggle() async {
+    if (widget.betId == null || _busy) return;
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _busy = true);
+    try {
+      final bet = await api.toggleBookmark(widget.betId!);
+      if (!mounted) return;
+      setState(() {
+        _on = bet.bookmarked;
+        _busy = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      messenger.showSnackBar(const SnackBar(content: Text('Could not update bookmark.')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 52,
+      width: 52,
+      child: OutlinedButton(
+        style: OutlinedButton.styleFrom(
+          shape: const StadiumBorder(),
+          side: BorderSide(color: _on ? AppColors.orange : AppColors.divider),
+          padding: EdgeInsets.zero,
+        ),
+        onPressed: _toggle,
+        child: Icon(_on ? Icons.bookmark : Icons.bookmark_border,
+            color: _on ? AppColors.orange : AppColors.textMuted, size: 24),
+      ),
+    );
+  }
 }

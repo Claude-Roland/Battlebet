@@ -13,11 +13,12 @@ import 'package:flutter/material.dart';
 
 import '../data/user_session.dart';
 import '../models/tiers.dart';
+import '../screens/bookmark_screen.dart';
 import '../screens/profile_screen.dart';
 import '../theme/app_theme.dart';
 
 class TopNav extends StatelessWidget {
-  const TopNav({super.key, this.activeIndex = 0, this.onTap, this.onProfileScreen = false});
+  const TopNav({super.key, this.activeIndex = 0, this.onTap, this.onProfileScreen = false, this.onBookmarkScreen = false});
 
   /// 0 = bets, 1 = create bet, 2 = my bets. (-1 = keiner aktiv, z. B. auf Profil.)
   final int activeIndex;
@@ -29,6 +30,9 @@ class TopNav extends StatelessWidget {
   /// kein erneutes Oeffnen).
   final bool onProfileScreen;
 
+  /// True, wenn gerade die Bookmark-Seite offen ist.
+  final bool onBookmarkScreen;
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -38,7 +42,16 @@ class TopNav extends StatelessWidget {
         bottom: false,
         child: Row(
           children: [
-            const Icon(Icons.bookmark_border, color: Colors.white, size: 22),
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: onBookmarkScreen
+                  ? null
+                  : () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const BookmarkScreen()),
+                      ),
+              child: Icon(onBookmarkScreen ? Icons.bookmark : Icons.bookmark_border,
+                  color: Colors.white, size: 22),
+            ),
             const SizedBox(width: 6),
             _tab('bets', 0),
             _tab('create bet', 1),

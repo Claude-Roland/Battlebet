@@ -97,6 +97,7 @@ Map<String, dynamic> betJson(Map<String, dynamic> r, {int? myState}) {
     'starters': starters,
     'dropouts': dropouts,
     'joined': myState != null,
+    'bookmarked': (r['bookmarked'] as bool?) ?? false,
     if (myState != null) 'myState': myState,
     ...eco,
   };
@@ -110,7 +111,8 @@ const _selectBet = '''
   COALESCE(agg.real_starters, 0) AS real_starters,
   (b.seed_starters + COALESCE(agg.real_starters, 0)) AS starters,
   (b.seed_dropouts + COALESCE(agg.real_dropouts, 0)) AS dropouts,
-  my.state AS my_state
+  my.state AS my_state,
+  (bk.bet_id IS NOT NULL) AS bookmarked
 ''';
 
 const _joinAgg = '''
@@ -120,6 +122,7 @@ const _joinAgg = '''
     FROM participations GROUP BY bet_id
   ) agg ON agg.bet_id = b.id
   LEFT JOIN participations my ON my.bet_id = b.id AND my.user_id = @me:uuid
+  LEFT JOIN bookmarks bk ON bk.bet_id = b.id AND bk.user_id = @me:uuid
 ''';
 
 /// Liste aller nicht abgebrochenen Wetten (neueste zuerst), mit Oekonomie.

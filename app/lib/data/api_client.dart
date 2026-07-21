@@ -195,6 +195,9 @@ class ApiClient {
 
   Future<Bet> joinBet(String id) async => Bet.fromJson(await _post('/bets/$id/join', {}));
 
+  Future<Bet> toggleBookmark(String id) async =>
+      Bet.fromJson(await _post('/bets/$id/bookmark', {}));
+
   /// Einen (eigenstaendigen) Lauf aufnehmen; der Server ordnet ihn passenden Wetten zu.
   Future<Map<String, dynamic>> recordRun({
     required int sport,

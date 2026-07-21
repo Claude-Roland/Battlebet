@@ -116,6 +116,7 @@ class Bet {
       tag: (gi >= 0 && gi < BetTag.values.length) ? BetTag.values[gi] : BetTag.none,
       status: (j['status'] as num?)?.toInt() ?? 1,
       joined: (j['joined'] as bool?) ?? false,
+      bookmarked: (j['bookmarked'] as bool?) ?? false,
       myState: (j['myState'] as num?)?.toInt(),
       createdAt: p(j['createdAt']),
       startsAt: p(j['startsAt']),
