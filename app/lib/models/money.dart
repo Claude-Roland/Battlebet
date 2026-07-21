@@ -54,4 +54,17 @@ class Money {
     }
     return '${neg ? '-' : ''}${buf.toString()}.$frac $symbol';
   }
+
+  /// Wie [format], aber OHNE Nachkommastellen — fuer enge Darstellungen
+  /// (z. B. die Pot/Teilnehmer-Angabe in der Listen-Ueberzeile): "3,456 €".
+  String formatWhole() {
+    final neg = minor < 0;
+    final whole = (minor.abs() ~/ 100).toString();
+    final buf = StringBuffer();
+    for (int i = 0; i < whole.length; i++) {
+      if (i > 0 && (whole.length - i) % 3 == 0) buf.write(',');
+      buf.write(whole[i]);
+    }
+    return '${neg ? '-' : ''}${buf.toString()} $symbol';
+  }
 }

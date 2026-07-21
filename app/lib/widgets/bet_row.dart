@@ -120,6 +120,9 @@ class BetRow extends StatelessWidget {
                 ),
                 // Meta-Gruppe (Sportart + Tier) um 25vw nach links; Bookmark bleibt rechts.
                 SizedBox(width: MediaQuery.of(context).size.width * 0.25),
+                // Pot / aktive Teilnehmer (Roland 2026-07-21) — direkt vor dem Bookmark.
+                _participantsPot(),
+                const SizedBox(width: 8),
                 SizedBox(
                   width: bookmarkColWidth,
                   child: Align(
@@ -157,6 +160,27 @@ class BetRow extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  /// Kompakte Pot/Teilnehmer-Angabe der Ueberzeile: "3,456 € / 34" + kleines
+  /// Personensymbol. Teilnehmer = aktuell AKTIVE (starters - dropouts).
+  Widget _participantsPot() {
+    final active = (bet.starters - bet.dropouts) < 0 ? 0 : bet.starters - bet.dropouts;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          '${bet.economics.pot.formatWhole()} / $active',
+          style: const TextStyle(
+            color: AppColors.textMuted,
+            fontSize: 11,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+        const SizedBox(width: 3),
+        const Icon(Icons.person, color: AppColors.textMuted, size: 12),
+      ],
     );
   }
 

@@ -6,6 +6,7 @@ import 'package:battlebet_server/src/bets.dart';
 import 'package:battlebet_server/src/db.dart';
 import 'package:battlebet_server/src/errors.dart';
 import 'package:battlebet_server/src/limits.dart';
+import 'package:battlebet_server/src/names.dart';
 
 Future<Response> onRequest(RequestContext context) async {
   return switch (context.request.method) {
@@ -28,7 +29,6 @@ Future<Response> _create(RequestContext context) async {
   final userTier = (me['tier'] as num).toInt();
 
   final body = await readJson(context);
-  final name = (body['name'] as String?)?.trim() ?? '';
   final sport = (body['sport'] as num?)?.toInt() ?? 0;
   final distanceKm = (body['distanceKm'] as num?)?.toDouble() ?? 0;
   final ipw = (body['iterationsPerWeek'] as num?)?.toInt() ?? 0;
@@ -37,7 +37,6 @@ Future<Response> _create(RequestContext context) async {
   final currency = ((body['currency'] as String?) ?? 'EUR').trim().toUpperCase();
   final tier = (body['tier'] as num?)?.toInt() ?? 0;
 
-  if (name.isEmpty) return fail('Please give the bet a name.');
   if (sport < 0 || sport > 5) return fail('Unknown sport.');
   if (tier < 0 || tier > 2) return fail('Unknown tier.');
   if (currency != 'EUR') return fail('Only EUR is supported in test mode.');
@@ -71,6 +70,9 @@ Future<Response> _create(RequestContext context) async {
       if (w.isEmpty) throw HttpError('Not enough balance for the stake.', status: 409);
       final newBal = (w.first.toColumnMap()['balance_minor'] as num).toInt();
 
+      // Nutzer-Wetten bekommen einen automatischen Themen-Namen
+      // (Vogel/Berg/Saeugetier + Zahl), eindeutig gegen die bets-Tabelle.
+      final name = await generateBetName(tx, sport);
       final b = await tx.execute(
         Sql.named('''
           INSERT INTO bets (creator_id, name, sport, distance_km, iterations_per_week,

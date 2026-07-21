@@ -108,7 +108,7 @@ class BetDetailScreen extends StatelessWidget {
               Expanded(
                 child: Column(
                   children: [
-                    _kvWhite('pot', _eco.pot.format(), big: true),
+                    _potParticipantsWhite(),
                     _kvWhite('expires in', '${bet.expirationDays}d'),
                     _kvWhite('ends at', _endsAt),
                   ],
@@ -330,6 +330,28 @@ class BetDetailScreen extends StatelessWidget {
                   color: valueColor,
                   fontSize: valueBig ? 22 : 15,
                   fontWeight: valueBig ? FontWeight.w700 : FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+
+  /// Header-Zeile "pot / participants": Pot (voll formatiert) / aktuell AKTIVE
+  /// Teilnehmer + kleines Personensymbol (Roland 2026-07-21).
+  Widget _potParticipantsWhite() {
+    final active = (bet.starters - bet.dropouts) < 0 ? 0 : bet.starters - bet.dropouts;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 1),
+      child: Row(
+        children: [
+          const Expanded(
+            child: Text('pot / participants',
+                style: TextStyle(color: Colors.white70, fontSize: 12)),
+          ),
+          Text('${_eco.pot.format()} / $active',
+              style: const TextStyle(
+                  color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
+          const SizedBox(width: 4),
+          const Icon(Icons.person, color: Colors.white, size: 16),
         ],
       ),
     );
