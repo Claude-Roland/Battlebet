@@ -38,7 +38,7 @@ Future<Response> _create(RequestContext context) async {
   final tier = (body['tier'] as num?)?.toInt() ?? 0;
 
   if (name.isEmpty) return fail('Please give the bet a name.');
-  if (sport < 0 || sport > 4) return fail('Unknown sport.');
+  if (sport < 0 || sport > 5) return fail('Unknown sport.');
   if (tier < 0 || tier > 2) return fail('Unknown tier.');
   if (currency != 'EUR') return fail('Only EUR is supported in test mode.');
   if (distanceKm <= 0) return fail('Distance must be positive.');

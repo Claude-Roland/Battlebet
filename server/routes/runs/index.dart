@@ -5,7 +5,7 @@ import 'package:postgres/postgres.dart';
 
 import 'package:battlebet_server/src/api.dart';
 import 'package:battlebet_server/src/db.dart';
-import 'package:battlebet_server/src/errors.dart';
+import 'package:battlebet_server/src/ticker.dart';
 
 Future<Response> onRequest(RequestContext context) async {
   return switch (context.request.method) {
@@ -21,8 +21,8 @@ Future<Response> _myRuns(RequestContext context) async {
   final uid = me['id'].toString();
   final res = await db.execute(
     Sql.named('''
-      SELECT id, bet_id, source, total_meters, total_seconds, avg_pace,
-             qualifying_meters, verdict, recorded_at
+      SELECT id, sport, activity, distance_meters, source, total_meters,
+             total_seconds, avg_pace, recorded_at
       FROM runs WHERE user_id = @uid:uuid ORDER BY recorded_at DESC LIMIT 200
     '''),
     parameters: {'uid': uid},
@@ -31,77 +31,74 @@ Future<Response> _myRuns(RequestContext context) async {
     final r = row.toColumnMap();
     return {
       'id': r['id'].toString(),
-      'betId': r['bet_id']?.toString(),
+      'sport': (r['sport'] as num).toInt(),
+      'activity': (r['activity'] as num).toInt(),
+      'distanceMeters': (r['distance_meters'] as num).toInt(),
       'source': (r['source'] as num).toInt(),
       'totalMeters': (r['total_meters'] as num).toInt(),
       'totalSeconds': (r['total_seconds'] as num).toInt(),
       'avgPace': (r['avg_pace'] as num).toInt(),
-      'qualifyingMeters': (r['qualifying_meters'] as num).toInt(),
-      'verdict': r['verdict'] == null ? null : (r['verdict'] as num).toInt(),
       'recordedAt': (r['recorded_at'] as DateTime).toUtc().toIso8601String(),
     };
   }).toList();
   return ok({'runs': runs});
 }
 
+/// Ein Lauf ist eigenstaendig (nicht an eine Wette gekoppelt). Er wird gespeichert
+/// und der Server meldet zurueck, welche der aktiven Wetten des Nutzers er erfuellt.
+/// Der Wochen-Checkpoint (Ticker) wertet ihn spaeter gegen alle passenden Wetten aus.
 Future<Response> _record(RequestContext context) async {
   final me = await authed(context);
   if (me == null) return fail('Not authenticated.', status: 401);
   final uid = me['id'].toString();
   final body = await readJson(context);
-  final betId = (body['betId'] as String?)?.trim();
-  if (betId == null || betId.isEmpty) return fail('betId is required.');
+  final sport = (body['sport'] as num?)?.toInt() ?? 0;
   final source = (body['source'] as num?)?.toInt() ?? 0;
   final totalMeters = (body['totalMeters'] as num?)?.toInt() ?? 0;
   final totalSeconds = (body['totalSeconds'] as num?)?.toInt() ?? 0;
   final avgPace = (body['avgPace'] as num?)?.toInt() ?? 0;
-  final qualifyingMeters = (body['qualifyingMeters'] as num?)?.toInt() ?? 0;
   final samples = body['samples'];
+  if (totalMeters <= 0) return fail('A run needs a distance.');
+  final activity = classifyPace(avgPace);
 
-  try {
-    final result = await db.runTx((tx) async {
-      final pr = await tx.execute(
-        Sql.named('''
-          SELECT p.id AS pid, b.distance_km::float8 AS distance_km, b.status
-          FROM participations p JOIN bets b ON b.id = p.bet_id
-          WHERE p.bet_id = @bid:uuid AND p.user_id = @uid:uuid
-        '''),
-        parameters: {'bid': betId, 'uid': uid},
-      );
-      if (pr.isEmpty) throw HttpError('You are not in this bet.', status: 404);
-      final p = pr.first.toColumnMap();
-      final status = (p['status'] as num).toInt();
-      if (status == 0) throw HttpError('This bet has not started yet.', status: 409);
-      if (status >= 2) throw HttpError('This bet is closed.', status: 409);
-      final requiredMeters = ((p['distance_km'] as num).toDouble() * 1000).round();
-      final verdict = qualifyingMeters >= requiredMeters ? 0 : 1;
-      final pid = p['pid'].toString();
+  final ins = await db.execute(
+    Sql.named('''
+      INSERT INTO runs (user_id, source, sport, activity, distance_meters,
+        total_meters, total_seconds, avg_pace, qualifying_meters, samples)
+      VALUES (@uid:uuid, @src, @sport, @act, @dm, @tm, @ts, @ap, @dm, @samples:jsonb)
+      RETURNING id, recorded_at
+    '''),
+    parameters: {
+      'uid': uid, 'src': source, 'sport': sport, 'act': activity, 'dm': totalMeters,
+      'tm': totalMeters, 'ts': totalSeconds, 'ap': avgPace,
+      'samples': samples == null ? null : jsonEncode(samples),
+    },
+  );
+  final row = ins.first.toColumnMap();
 
-      final ins = await tx.execute(
-        Sql.named('''
-          INSERT INTO runs (participation_id, user_id, bet_id, source, total_meters,
-            total_seconds, avg_pace, qualifying_meters, samples, verdict)
-          VALUES (@pid:uuid, @uid:uuid, @bid:uuid, @src, @tm, @ts, @ap, @qm, @samples:jsonb, @verdict)
-          RETURNING id, recorded_at
-        '''),
-        parameters: {
-          'pid': pid, 'uid': uid, 'bid': betId, 'src': source,
-          'tm': totalMeters, 'ts': totalSeconds, 'ap': avgPace, 'qm': qualifyingMeters,
-          'samples': samples == null ? null : jsonEncode(samples), 'verdict': verdict,
-        },
-      );
-      final row = ins.first.toColumnMap();
-      return {
-        'id': row['id'].toString(),
-        'betId': betId,
-        'verdict': verdict,
-        'requiredMeters': requiredMeters,
-        'qualifyingMeters': qualifyingMeters,
-        'recordedAt': (row['recorded_at'] as DateTime).toUtc().toIso8601String(),
-      };
-    });
-    return ok(result, status: 201);
-  } on HttpError catch (e) {
-    return fail(e.message, status: e.status);
-  }
+  final matched = await db.execute(
+    Sql.named('''
+      SELECT b.id, b.name FROM bets b
+      JOIN participations p ON p.bet_id = b.id AND p.user_id = @uid:uuid AND p.state = 0
+      WHERE b.status = 1
+        AND @dm:int4 >= round(b.distance_km * 1000)
+        AND ( (b.sport IN (0, 1, 5)
+                AND @act:int4 >= CASE b.sport WHEN 1 THEN 2 WHEN 0 THEN 1 WHEN 5 THEN 0 ELSE 1 END)
+              OR (b.sport NOT IN (0, 1, 5) AND b.sport = @sport:int4) )
+    '''),
+    parameters: {'uid': uid, 'dm': totalMeters, 'act': activity, 'sport': sport},
+  );
+  final matchedBets = matched.map((r) {
+    final m = r.toColumnMap();
+    return {'id': m['id'].toString(), 'name': m['name']};
+  }).toList();
+
+  return ok({
+    'id': row['id'].toString(),
+    'sport': sport,
+    'activity': activity,
+    'distanceMeters': totalMeters,
+    'matchedBets': matchedBets,
+    'recordedAt': (row['recorded_at'] as DateTime).toUtc().toIso8601String(),
+  }, status: 201);
 }
