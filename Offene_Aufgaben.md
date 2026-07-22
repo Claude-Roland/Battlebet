@@ -45,6 +45,9 @@ neue Aufgaben kommen dazu. Reihenfolge innerhalb der Blöcke ≈ Priorität.
 
 ## 4 · App & Design
 
+- [ ] **Konto-Verwaltung: Passwort ändern** (in der App, für das eigene Konto; Anlass:
+  Staff-Konto Alexander_Hotz wurde 2026-07-22 mit im Chat geteiltem Passwort angelegt).
+  Später dazu: „Passwort vergessen"-Reset (braucht E-Mail o. ä. — Weg offen).
 - [ ] **l10n einführen:** EN = Basis, DE = erste Übersetzung; DE/EN sauber übers
   l10n-System; Language-Einstellung im Profil scharf schalten (Deutsch aktivierbar).
 - [ ] **Belohnungssystem SOCKS/Ranking:** `evaluateRewards(run)` mit Leben füllen
