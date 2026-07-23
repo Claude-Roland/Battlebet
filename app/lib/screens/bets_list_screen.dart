@@ -124,13 +124,18 @@ class _BetsListScreenState extends State<BetsListScreen> {
   }
 
   List<Bet> get _visibleBets {
+    // Raus aus dem Marktplatz: beendete (2) und abgesagte (3) Wetten sowie volle
+    // Toepfe („pot full · closed") — was man nicht mehr annehmen kann, frustriert
+    // nur (Roland 2026-07-23). Eigene laufende Wetten stehen in My Bets.
     final list = _bets
         .where((b) =>
             (_filterSport == null || b.sport == _filterSport) &&
             b.distanceKm >= _minDist &&
             b.stake.minor >= _minStake * 100 &&
             b.iterationsPerWeek >= _minFreq &&
-            b.status != 2)
+            b.status != 2 &&
+            b.status != 3 &&
+            !b.economics.isFull)
         .toList();
     list.sort((a, b) => _desc ? _cmp(b, a) : _cmp(a, b));
     return list;
@@ -223,7 +228,7 @@ class _BetsListScreenState extends State<BetsListScreen> {
   Widget _sortHeader() {
     return Container(
       color: AppColors.background,
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+      padding: const EdgeInsets.fromLTRB(12, 10, 18, 8),
       child: Row(
         children: [
           SizedBox(width: BetRow.iconColWidth, child: _newSort()),

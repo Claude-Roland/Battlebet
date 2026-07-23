@@ -34,6 +34,10 @@ class BetRow extends StatelessWidget {
   static const double iconColWidth = 30;
   static const double bookmarkColWidth = 18;
 
+  // Feste Breite der Pot/Teilnehmer-Spalte der Ueberzeile. Rechtsbuendig,
+  // damit die Personen-Symbole aller Zeilen exakt untereinander stehen.
+  static const double potColWidth = 84;
+
   // Etwas Luft zwischen distance–interval und interval–expiration
   // (identisch in Kopfzeile und Datenzeile, damit beide fluchten).
   static const double colGap = 8;
@@ -59,7 +63,7 @@ class BetRow extends StatelessWidget {
 
   Widget _content(BuildContext context, bool locked) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
+      padding: const EdgeInsets.fromLTRB(12, 8, 18, 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -70,6 +74,7 @@ class BetRow extends StatelessWidget {
               children: [
                 // Name (erste Spalte, flexibel) + optionaler Tag.
                 Expanded(
+                  flex: 3,
                   child: Row(
                     children: [
                       Flexible(
@@ -118,10 +123,18 @@ class BetRow extends StatelessWidget {
                       ? const Icon(Icons.lock_outline, color: AppColors.textMuted, size: 13)
                       : const SizedBox.shrink(),
                 ),
-                // Meta-Gruppe (Sportart + Tier) um 25vw nach links; Bookmark bleibt rechts.
-                SizedBox(width: MediaQuery.of(context).size.width * 0.25),
-                // Pot / aktive Teilnehmer (Roland 2026-07-21) — direkt vor dem Bookmark.
-                _participantsPot(),
+                // Flexibler Zwischenraum (frueher feste 25vw-Luecke — die lief auf
+                // schmalen Screens ueber und schob Pot + Bookmark aus dem Raster).
+                const Spacer(flex: 1),
+                // Pot / aktive Teilnehmer (Roland 2026-07-21) — feste, rechtsbuendige
+                // Spalte direkt vor dem Bookmark; schrumpft notfalls statt zu ueberlaufen.
+                SizedBox(
+                  width: potColWidth,
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: FittedBox(fit: BoxFit.scaleDown, child: _participantsPot()),
+                  ),
+                ),
                 const SizedBox(width: 8),
                 SizedBox(
                   width: bookmarkColWidth,
