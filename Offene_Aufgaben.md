@@ -2,7 +2,7 @@
 
 Lebendes Dokument. Erledigtes wird abgehakt und wandert nach unten in „Erledigt-Archiv";
 neue Aufgaben kommen dazu. Reihenfolge innerhalb der Blöcke ≈ Priorität.
-(Stand: 2026-07-22)
+(Stand: 2026-07-22; Pfad-Nachtrag 2026-10-10)
 
 ## 1 · Kurzfristig — Live-Betrieb festigen
 
@@ -68,7 +68,7 @@ neue Aufgaben kommen dazu. Reihenfolge innerhalb der Blöcke ≈ Priorität.
 - [ ] **Mobile Build-CI:** iOS-/Android-Builds (Mac oder GitHub-Actions-macOS/Codemagic);
   iOS-Signierung über den Mac.
 - [ ] **Push-Benachrichtigungen** (Server-Job → APNs/FCM) — nach Mobil-App + Konten.
-- [ ] **Excel-Quellen in `Code/_zum_loeschen/`** — Roland löscht selbst.
+- [ ] **Excel-Quellen in `Battlebet-Code/_zum_loeschen/` (Repo-Ordner, seit 10.10. unter Projects/Battlebet/)** — Roland löscht selbst.
 
 ## 6 · Zuletzt — echtes Geld (Stufe C)
 
