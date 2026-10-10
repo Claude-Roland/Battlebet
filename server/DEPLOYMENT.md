@@ -5,4 +5,5 @@ Container-Image nach GHCR gepusht: `ghcr.io/claude-roland/battlebet-backend:late
 
 Betrieb: Hetzner CPX22 (188.245.56.104), isolierter Docker-Stack `/opt/battlebet`
 (eigene PostgreSQL 16, hinter dem bestehenden Caddy). Vollständige Anleitung:
-`../Server-Einrichtung/03_Runbook_Deployment.md`.
+`AI-Systemadministrator/BattleBet/Server-Einrichtung/03_Runbook_Deployment.md`
+(Admin-Projekt, nicht in diesem Repo).
